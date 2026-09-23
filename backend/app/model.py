@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 import torch
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 from torchvision import models, transforms
 
 from .gradcam import GradCAM, overlay_heatmap
@@ -53,6 +53,29 @@ class DermaLensModel:
         model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, len(CLASSES))
         return model.to(self.device)
 
+    def _predict_summary(self, image: Image.Image):
+        x = self.transform(image.convert("RGB")).unsqueeze(0).to(self.device)
+        with torch.inference_mode():
+            logits = self.model(x)
+            p = torch.softmax(logits, dim=1)[0]
+
+        top_idx = int(torch.argmax(p).item())
+        confidence = float(p[top_idx].item())
+        uncertainty = 1.0 - confidence
+        entropy = float(
+            (-(p * torch.log(p + 1e-12)).sum() / math.log(len(CLASSES))).item()
+        )
+
+        return {
+            "x": x,
+            "probabilities": {CLASSES[i]: float(p[i].item()) for i in range(len(CLASSES))},
+            "top_class": CLASSES[top_idx],
+            "top_idx": top_idx,
+            "confidence": confidence,
+            "uncertainty": uncertainty,
+            "entropy": entropy,
+        }
+
     def predict(self, image: Image.Image) -> Prediction:
         if self.demo_mode:
             probs = {label: 1.0 / len(CLASSES) for label in CLASSES}
@@ -67,35 +90,65 @@ class DermaLensModel:
             )
 
         original = image.convert("RGB")
-        x = self.transform(original).unsqueeze(0).to(self.device)
-
-        with torch.inference_mode():
-            logits = self.model(x)
-            p = torch.softmax(logits, dim=1)[0]
-
-        values, indices = torch.sort(p, descending=True)
-        top_idx = int(indices[0].item())
-        confidence = float(values[0].item())
-        uncertainty = 1.0 - confidence
-        normalized_entropy = float(
-            (-(p * torch.log(p + 1e-12)).sum() / math.log(len(CLASSES))).item()
-        )
+        summary = self._predict_summary(original)
 
         target_layer = self.model.features[-1]
         cam = GradCAM(self.model, target_layer)
         try:
-            heatmap = cam.generate(x.clone().detach().requires_grad_(True), top_idx)
+            heatmap = cam.generate(
+                summary["x"].clone().detach().requires_grad_(True),
+                summary["top_idx"],
+            )
             heatmap_data_url = overlay_heatmap(original, heatmap)
         finally:
             cam.close()
             self.model.zero_grad(set_to_none=True)
 
         return Prediction(
-            probabilities={CLASSES[i]: float(p[i].item()) for i in range(len(CLASSES))},
-            top_class=CLASSES[top_idx],
-            confidence=confidence,
-            uncertainty=uncertainty,
-            entropy=normalized_entropy,
+            probabilities=summary["probabilities"],
+            top_class=summary["top_class"],
+            confidence=summary["confidence"],
+            uncertainty=summary["uncertainty"],
+            entropy=summary["entropy"],
             demo_mode=False,
             heatmap_data_url=heatmap_data_url,
         )
+
+    def stress_test(self, image: Image.Image):
+        if self.demo_mode:
+            return {
+                "demo_mode": True,
+                "stability": None,
+                "results": [],
+            }
+
+        base = image.convert("RGB")
+        variants = {
+            "Original": base,
+            "Darker": ImageEnhance.Brightness(base).enhance(0.65),
+            "Brighter": ImageEnhance.Brightness(base).enhance(1.35),
+            "Lower contrast": ImageEnhance.Contrast(base).enhance(0.65),
+            "Blur": base.filter(ImageFilter.GaussianBlur(radius=1.5)),
+        }
+
+        results = []
+        for name, variant in variants.items():
+            summary = self._predict_summary(variant)
+            results.append(
+                {
+                    "variant": name,
+                    "top_class": summary["top_class"],
+                    "confidence": summary["confidence"],
+                    "entropy": summary["entropy"],
+                }
+            )
+
+        original_class = results[0]["top_class"]
+        same_count = sum(row["top_class"] == original_class for row in results)
+
+        return {
+            "demo_mode": False,
+            "stability": same_count / len(results),
+            "original_class": original_class,
+            "results": results,
+        }
