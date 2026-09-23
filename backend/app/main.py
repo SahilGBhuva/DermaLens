@@ -1,5 +1,7 @@
+import json
 import os
 from io import BytesIO
+from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,8 +9,10 @@ from PIL import Image, UnidentifiedImageError
 
 from .model import DermaLensModel
 
-app = FastAPI(title="DermaLens API", version="0.4.0")
+app = FastAPI(title="DermaLens API", version="0.5.0")
 model = DermaLensModel()
+ROOT_DIR = Path(__file__).resolve().parents[2]
+EVALUATION_PATH = ROOT_DIR / "models" / "evaluation.json"
 
 cors_origins = [
     origin.strip()
@@ -65,6 +69,40 @@ async def load_image(file: UploadFile) -> Image.Image:
         raise HTTPException(status_code=400, detail="Image is too small to analyze.")
 
     return image
+
+
+@app.get("/research-status")
+def research_status():
+    evaluation = None
+    if EVALUATION_PATH.exists():
+        try:
+            raw = json.loads(EVALUATION_PATH.read_text())
+            evaluation = {
+                "accuracy": raw.get("accuracy"),
+                "balanced_accuracy": raw.get("balanced_accuracy"),
+                "macro_f1": raw.get("macro_f1"),
+                "weighted_f1": raw.get("weighted_f1"),
+                "macro_ovr_roc_auc": raw.get("macro_ovr_roc_auc"),
+            }
+        except (OSError, json.JSONDecodeError):
+            evaluation = None
+
+    return {
+        "model_loaded": not model.demo_mode,
+        "evaluation_available": evaluation is not None,
+        "evaluation": evaluation,
+        "implemented": {
+            "lesion_level_split": True,
+            "class_weighted_training": True,
+            "held_out_test_pipeline": True,
+            "grad_cam": True,
+            "robustness_lab": True,
+        },
+        "note": (
+            "Metrics are only shown when a real held-out evaluation file exists. "
+            "DermaLens does not invent performance numbers."
+        ),
+    }
 
 
 @app.post("/predict")
