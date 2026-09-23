@@ -43,3 +43,38 @@ def test_demo_mode_does_not_fake_prediction():
         assert body["top_class"] == "demo"
         assert body["confidence"] == 0.0
         assert body["heatmap_data_url"] is None
+
+
+def test_research_status_is_transparent():
+    response = client.get("/research-status")
+    assert response.status_code == 200
+    body = response.json()
+    assert "model_loaded" in body
+    assert "evaluation_available" in body
+    assert body["implemented"]["lesion_level_split"] is True
+    if not body["evaluation_available"]:
+        assert body["evaluation"] is None
+
+
+def test_stress_test_does_not_fake_demo_results():
+    response = client.post(
+        "/stress-test",
+        files={"file": ("lesion.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+
+    if body["demo_mode"]:
+        assert body["stability"] is None
+        assert body["results"] == []
+
+
+def test_rejects_tiny_image():
+    image = Image.new("RGB", (8, 8), color=(120, 120, 120))
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    response = client.post(
+        "/predict",
+        files={"file": ("tiny.png", buffer.getvalue(), "image/png")},
+    )
+    assert response.status_code == 400
