@@ -198,13 +198,18 @@ main {
 .visualRail {
   position: relative;
   z-index: 1;
-  margin-top: 58px;
+  margin-top: 54px;
   padding: 0 3vw;
   display: grid;
   grid-template-columns: .75fr .85fr 1fr 1.05fr 1.25fr .9fr .8fr;
   gap: 12px;
   align-items: stretch;
   overflow: hidden;
+  perspective: 1600px;
+  transform: perspective(1600px) rotateX(7deg) scale(1.025);
+  transform-origin: 50% 100%;
+  transform-style: preserve-3d;
+  animation: railReveal 900ms cubic-bezier(.2,.75,.2,1) both;
 }
 
 .visualRail::before,
@@ -231,11 +236,36 @@ main {
 .railCard {
   position: relative;
   min-height: 162px;
+  transform: translateZ(0);
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.82);
   border-radius: 18px;
   background: rgba(255,255,255,.58);
   box-shadow: var(--soft-shadow);
+  transition:
+    transform 320ms cubic-bezier(.2,.75,.2,1),
+    box-shadow 320ms ease,
+    filter 320ms ease;
+}
+
+.railCard:nth-child(2),
+.railCard:nth-child(6) {
+  transform: translateY(9px) translateZ(8px);
+}
+
+.railCard:nth-child(3),
+.railCard:nth-child(5) {
+  transform: translateY(-3px) translateZ(16px);
+}
+
+.railCard:nth-child(4) {
+  transform: translateY(-8px) translateZ(22px);
+}
+
+.railCard:hover {
+  transform: translateY(-10px) translateZ(36px) scale(1.015);
+  box-shadow: 0 24px 46px rgba(44, 74, 111, 0.18);
+  z-index: 5;
 }
 
 .railCard img {
@@ -423,6 +453,7 @@ main {
   box-shadow:
     0 28px 55px rgba(48,80,118,.16),
     inset 0 0 0 1px rgba(74, 101, 135, .06);
+  animation: composerReveal 820ms 180ms cubic-bezier(.2,.75,.2,1) both;
 }
 
 .heroComposer p {
@@ -598,6 +629,8 @@ main {
   box-shadow:
     0 30px 80px rgba(56,85,120,.16),
     inset 0 0 0 1px rgba(62,89,119,.08);
+  transform: perspective(1600px) rotateX(1.8deg);
+  transform-origin: 50% 100%;
 }
 
 .mockChrome {
@@ -661,6 +694,36 @@ main {
 .storyScreen {
   min-height: 560px;
   padding: 32px;
+}
+
+.storyScreenStack {
+  position: relative;
+  overflow: hidden;
+}
+
+.storyPane {
+  position: absolute;
+  inset: 32px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(26px) scale(.982);
+  filter: blur(8px);
+  transition:
+    opacity 680ms cubic-bezier(.2,.75,.2,1),
+    transform 760ms cubic-bezier(.2,.75,.2,1),
+    filter 680ms ease;
+}
+
+.storyPane.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+  z-index: 2;
+}
+
+.storyCopySwap {
+  animation: storyCopyIn 620ms cubic-bezier(.2,.75,.2,1) both;
 }
 
 .analyzeMock {
@@ -1757,5 +1820,54 @@ a:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto !important;
+  }
+}
+
+
+@keyframes railReveal {
+  from {
+    opacity: 0;
+    transform: perspective(1600px) rotateX(14deg) translateY(26px) scale(.99);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1600px) rotateX(7deg) translateY(0) scale(1.025);
+    filter: blur(0);
+  }
+}
+
+@keyframes composerReveal {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes storyCopyIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .visualRail,
+  .heroComposer,
+  .storyCopySwap,
+  .storyPane {
+    animation: none !important;
+    transition: none !important;
+    filter: none !important;
   }
 }
