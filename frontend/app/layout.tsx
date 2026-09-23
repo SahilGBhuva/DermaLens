@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "DermaLens — Interrogate the Model",
+    default: "DermaLens — See what the model sees",
     template: "%s · DermaLens",
   },
   description:
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: "DermaLens — Interrogate the Model",
+    title: "DermaLens — See what the model sees",
     description:
       "Inspect prediction confidence, uncertainty, model attention, robustness, and limitations.",
     type: "website",
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f2efe8",
+  themeColor: "#eef4fb",
   colorScheme: "light",
 };
 
