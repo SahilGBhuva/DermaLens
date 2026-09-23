@@ -102,6 +102,7 @@ export default function Home() {
   const [activeStory, setActiveStory] = useState(0);
   const [sandboxTab, setSandboxTab] = useState<"prediction" | "attention" | "robustness">("prediction");
   const [sampleLoading, setSampleLoading] = useState(false);
+  const [analysisMs, setAnalysisMs] = useState<number | null>(null);
   const storyRef = useRef<HTMLElement | null>(null);
   const heroFileRef = useRef<HTMLInputElement | null>(null);
 
@@ -176,6 +177,7 @@ export default function Home() {
     setFile(nextFile);
     setResult(null);
     setStress(null);
+    setAnalysisMs(null);
     setSandboxTab("prediction");
     setError("");
   }
@@ -184,6 +186,7 @@ export default function Home() {
     setFile(null);
     setResult(null);
     setStress(null);
+    setAnalysisMs(null);
     setSandboxTab("prediction");
     setError("");
   }
@@ -200,6 +203,12 @@ export default function Home() {
       entropy: result.entropy,
       probabilities: result.probabilities,
       robustness: stress,
+      response_time_ms: analysisMs,
+      model: {
+        architecture: "EfficientNet-B0",
+        input_size: "224x224",
+        classes: 7,
+      },
       disclaimer: result.disclaimer,
     };
 
@@ -252,6 +261,8 @@ export default function Home() {
     const form = new FormData();
     form.append("file", file);
 
+    const startedAt = performance.now();
+
     try {
       const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
       const response = await fetch(`${base}/predict`, {
@@ -262,6 +273,7 @@ export default function Home() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail ?? "Analysis failed.");
       setResult(data);
+      setAnalysisMs(Math.round(performance.now() - startedAt));
       setSandboxTab("prediction");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed.");
@@ -825,6 +837,16 @@ export default function Home() {
                   <div className="resultStats">
                     <div><span>Uncertainty</span><b>{Math.round(result.uncertainty * 100)}%</b></div>
                     <div><span>Entropy</span><b>{Math.round(result.entropy * 100)}%</b></div>
+                    <div>
+                      <span>Response time</span>
+                      <b>{analysisMs ? `${(analysisMs / 1000).toFixed(2)}s` : "—"}</b>
+                    </div>
+                  </div>
+                  <div className="modelFacts">
+                    <span>EfficientNet-B0</span>
+                    <span>224 × 224 input</span>
+                    <span>7 classes</span>
+                    <span>Grad-CAM explanation</span>
                   </div>
 
                   <div className="probabilityRows">
