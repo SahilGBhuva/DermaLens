@@ -150,6 +150,16 @@ export default function Home() {
     };
   }, []);
 
+  function goToStory(index: number) {
+    const node = storyRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const sectionTop = rect.top + window.scrollY;
+    const scrollable = Math.max(node.offsetHeight - window.innerHeight, 1);
+    const target = sectionTop + (index / Math.max(story.length - 1, 1)) * scrollable;
+    window.scrollTo({ top: target, behavior: "smooth" });
+  }
+
   function chooseFile(nextFile: File | null) {
     if (nextFile) {
       const allowed = ["image/jpeg", "image/png", "image/webp"];
@@ -501,12 +511,16 @@ export default function Home() {
               <h2>{story[activeStory].title}</h2>
               <p>{story[activeStory].body}</p>
             </div>
+            <div className="storyProgressMeta">
+              <span>{String(activeStory + 1).padStart(2, "0")} / 04</span>
+              <span>Scroll to explore</span>
+            </div>
             <div className="storyDots" aria-label="Scroll story progress">
               {story.map((_, index) => (
                 <button
                   key={index}
                   className={index === activeStory ? "storyDot active" : "storyDot"}
-                  onClick={() => setActiveStory(index)}
+                  onClick={() => goToStory(index)}
                   aria-label={`Show story step ${index + 1}`}
                 />
               ))}
