@@ -68,15 +68,25 @@ export default function Home() {
   const [stressLoading, setStressLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
 
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
 
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-    fetch(`${base}/research-status`)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => data && setResearch(data))
-      .catch(() => {});
+    Promise.allSettled([
+      fetch(`${base}/research-status`).then((response) =>
+        response.ok ? response.json() : null
+      ),
+      fetch(`${base}/health`).then((response) => response.ok),
+    ]).then(([researchResult, healthResult]) => {
+      if (researchResult.status === "fulfilled" && researchResult.value) {
+        setResearch(researchResult.value);
+      }
+      setApiOnline(
+        healthResult.status === "fulfilled" ? healthResult.value : false
+      );
+    });
   }, []);
 
   useEffect(() => {
@@ -171,8 +181,22 @@ export default function Home() {
           <a href="#limits">Limits</a>
         </div>
         <div className="navStatus">
-          <span className={research?.model_loaded ? "statusDot live" : "statusDot"} />
-          {research?.model_loaded ? "Model online" : "Research build"}
+          <span
+            className={
+              research?.model_loaded
+                ? "statusDot live"
+                : apiOnline
+                  ? "statusDot api"
+                  : "statusDot"
+            }
+          />
+          {research?.model_loaded
+            ? "Model online"
+            : apiOnline
+              ? "API online · model pending"
+              : apiOnline === false
+                ? "Local API offline"
+                : "Checking system"}
         </div>
       </nav>
 
@@ -307,6 +331,7 @@ export default function Home() {
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
+                aria-label="Choose a skin-lesion image for analysis"
                 onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
               />
             </label>
@@ -559,6 +584,18 @@ export default function Home() {
           <span>DEVICE VARIATION</span>
           <span>CALIBRATION</span>
         </div>
+      </section>
+
+      <section className="privacyBand" aria-label="Privacy and responsible use">
+        <div>
+          <span className="sectionIndex">PRIVACY / RESPONSIBLE USE</span>
+          <strong>Your image is analyzed for this request, not presented as a diagnosis.</strong>
+        </div>
+        <p>
+          DermaLens is designed as an educational research prototype. Uploaded image
+          payloads are not intentionally persisted by the application, and model
+          outputs should never replace evaluation by a qualified clinician.
+        </p>
       </section>
 
       <footer>
