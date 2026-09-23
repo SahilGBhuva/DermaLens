@@ -2016,3 +2016,243 @@ a:focus-visible,
     filter: none !important;
   }
 }
+
+
+.heroHiddenInput {
+  display: none;
+}
+
+.composerUpload {
+  border: 1px solid rgba(63,92,128,.1);
+  cursor: pointer;
+  color: #365378;
+}
+
+button.softPill,
+button.roundPill {
+  font: inherit;
+}
+
+.uploadActions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.uploadActions .analyzeButton {
+  margin-top: 0;
+}
+
+.sampleButton {
+  min-height: 52px;
+  padding: 0 15px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  cursor: pointer;
+  background: rgba(255,255,255,.72);
+  color: #4b6485;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.sampleButton:hover:not(:disabled) {
+  background: rgba(240,247,255,.95);
+}
+
+.sampleButton:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.resultColumnHeader {
+  min-height: 38px;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+}
+
+.sandboxTabs {
+  display: flex;
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(231,240,250,.72);
+}
+
+.sandboxTabs button {
+  min-height: 30px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  background: transparent;
+  color: #6d819d;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.sandboxTabs button.active {
+  color: #315f9d;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 4px 10px rgba(62,91,126,.08);
+}
+
+.sandboxTabs button:disabled {
+  cursor: not-allowed;
+  opacity: .35;
+}
+
+.attentionResult,
+.robustnessResult {
+  padding-top: 26px;
+}
+
+.attentionCompare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.compareLabel {
+  display: block;
+  margin-bottom: 8px;
+  color: #7287a5;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+.compareImage {
+  aspect-ratio: 1.05;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #e7eff8;
+}
+
+.compareImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.attentionNote {
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(226,237,249,.9), rgba(242,247,252,.84));
+}
+
+.attentionNote strong {
+  display: block;
+  font-family: Georgia, serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -.03em;
+}
+
+.attentionNote p {
+  margin: 8px 0 0;
+  color: #6d809a;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.robustnessSummary {
+  min-height: 170px;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #e6eff9, #dbe8f6);
+}
+
+.robustnessSummary > span {
+  align-self: start;
+  color: #6f84a0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+.robustnessSummary strong {
+  font-family: Georgia, serif;
+  font-size: 58px;
+  font-weight: 500;
+  letter-spacing: -.055em;
+}
+
+.robustnessSummary p {
+  grid-column: 1 / -1;
+  margin: 0;
+  max-width: 440px;
+  color: #6a7e99;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.robustnessTable {
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255,255,255,.62);
+}
+
+.robustnessTableRow {
+  min-height: 52px;
+  padding: 0 14px;
+  display: grid;
+  grid-template-columns: .8fr 1.7fr 55px;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  color: #61758f;
+  font-size: 10px;
+}
+
+.robustnessTableRow:last-child {
+  border-bottom: 0;
+}
+
+.compactStressResults {
+  opacity: .94;
+}
+
+@media (max-width: 760px) {
+  .uploadActions {
+    grid-template-columns: 1fr;
+  }
+
+  .resultColumnHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sandboxTabs {
+    width: 100%;
+  }
+
+  .sandboxTabs button {
+    flex: 1;
+  }
+
+  .attentionCompare {
+    grid-template-columns: 1fr;
+  }
+
+  .robustnessSummary {
+    grid-template-columns: 1fr;
+  }
+
+  .robustnessSummary strong {
+    font-size: 48px;
+  }
+}
