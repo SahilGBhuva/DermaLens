@@ -100,7 +100,10 @@ export default function Home() {
   const [error, setError] = useState("");
   const [apiOnline, setApiOnline] = useState<boolean | null>(null);
   const [activeStory, setActiveStory] = useState(0);
+  const [sandboxTab, setSandboxTab] = useState<"prediction" | "attention" | "robustness">("prediction");
+  const [sampleLoading, setSampleLoading] = useState(false);
   const storyRef = useRef<HTMLElement | null>(null);
+  const heroFileRef = useRef<HTMLInputElement | null>(null);
 
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
 
@@ -151,7 +154,27 @@ export default function Home() {
     setFile(nextFile);
     setResult(null);
     setStress(null);
+    setSandboxTab("prediction");
     setError("");
+  }
+
+  async function loadSampleImage() {
+    setSampleLoading(true);
+    setError("");
+    try {
+      const response = await fetch(LESION_IMAGE);
+      if (!response.ok) throw new Error("Could not load the sample image.");
+      const blob = await response.blob();
+      const sample = new File([blob], "sample-lesion.jpg", {
+        type: blob.type || "image/jpeg",
+      });
+      chooseFile(sample);
+      document.getElementById("sandbox")?.scrollIntoView({ behavior: "smooth" });
+    } catch {
+      setError("Could not load the sample image. You can still upload your own image.");
+    } finally {
+      setSampleLoading(false);
+    }
   }
 
   function onDrop(event: DragEvent<HTMLLabelElement>) {
@@ -181,6 +204,7 @@ export default function Home() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail ?? "Analysis failed.");
       setResult(data);
+      setSandboxTab("prediction");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed.");
     } finally {
@@ -206,6 +230,7 @@ export default function Home() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail ?? "Stress test failed.");
       setStress(data);
+      setSandboxTab("robustness");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Stress test failed.");
     } finally {
@@ -373,10 +398,33 @@ export default function Home() {
           </p>
           <div className="composerBottom">
             <div className="composerPills">
-              <span className="roundPill">＋</span>
-              <span className="softPill">▧ Image ×</span>
+              <button
+                className="roundPill composerUpload"
+                onClick={() => heroFileRef.current?.click()}
+                aria-label="Choose image"
+              >
+                ＋
+              </button>
+              <button
+                className="softPill composerUpload"
+                onClick={() => heroFileRef.current?.click()}
+              >
+                ▧ Image
+              </button>
               <span className="softPill">◉ DermaLens Research⌄</span>
             </div>
+            <input
+              ref={heroFileRef}
+              className="heroHiddenInput"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(event) => {
+                chooseFile(event.target.files?.[0] ?? null);
+                if (event.target.files?.[0]) {
+                  document.getElementById("sandbox")?.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
+            />
             <button
               className="startButton"
               onClick={() =>
@@ -564,19 +612,52 @@ export default function Home() {
                 />
               </label>
 
-              <button
-                className="analyzeButton"
-                onClick={analyze}
-                disabled={!file || loading}
-              >
-                {loading ? "Running analysis…" : "Analyze image"}
-                <span>→</span>
-              </button>
+              <div className="uploadActions">
+                <button
+                  className="analyzeButton"
+                  onClick={analyze}
+                  disabled={!file || loading}
+                >
+                  {loading ? "Running analysis…" : "Analyze image"}
+                  <span>→</span>
+                </button>
+                <button
+                  className="sampleButton"
+                  onClick={loadSampleImage}
+                  disabled={sampleLoading}
+                >
+                  {sampleLoading ? "Loading sample…" : "Use sample image"}
+                </button>
+              </div>
               {error && <p className="error">{error}</p>}
             </div>
 
             <div className="resultColumn">
-              <div className="sandboxLabel">02 / Output</div>
+              <div className="resultColumnHeader">
+                <div className="sandboxLabel">02 / Inspect</div>
+                <div className="sandboxTabs" role="tablist" aria-label="Analysis views">
+                  <button
+                    className={sandboxTab === "prediction" ? "active" : ""}
+                    onClick={() => setSandboxTab("prediction")}
+                  >
+                    Prediction
+                  </button>
+                  <button
+                    className={sandboxTab === "attention" ? "active" : ""}
+                    onClick={() => setSandboxTab("attention")}
+                    disabled={!result || result.demo_mode || !result.heatmap_data_url}
+                  >
+                    Attention
+                  </button>
+                  <button
+                    className={sandboxTab === "robustness" ? "active" : ""}
+                    onClick={() => setSandboxTab("robustness")}
+                    disabled={!stress}
+                  >
+                    Robustness
+                  </button>
+                </div>
+              </div>
 
               {!result ? (
                 <div className="resultEmpty">
@@ -593,6 +674,51 @@ export default function Home() {
                   <p>
                     DermaLens intentionally does not fabricate a medical prediction.
                   </p>
+                </div>
+              ) : sandboxTab === "attention" && result.heatmap_data_url ? (
+                <div className="attentionResult">
+                  <div className="attentionCompare">
+                    <div>
+                      <span className="compareLabel">Original</span>
+                      <div className="compareImage">
+                        {preview && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={preview} alt="Original uploaded lesion" />
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="compareLabel">Grad-CAM</span>
+                      <div className="compareImage">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={result.heatmap_data_url} alt="Grad-CAM attention map" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="attentionNote">
+                    <strong>Attention shows influence, not medical meaning.</strong>
+                    <p>
+                      The highlighted regions are the pixels that most affected the top-scoring class.
+                      They are not proof that a highlighted region is malignant or clinically important.
+                    </p>
+                  </div>
+                </div>
+              ) : sandboxTab === "robustness" && stress ? (
+                <div className="robustnessResult">
+                  <div className="robustnessSummary">
+                    <span>Top-class stability</span>
+                    <strong>{Math.round((stress.stability ?? 0) * 100)}%</strong>
+                    <p>Share of tested image conditions that kept the original top class.</p>
+                  </div>
+                  <div className="robustnessTable">
+                    {stress.results.map((row) => (
+                      <div className="robustnessTableRow" key={row.variant}>
+                        <span>{row.variant}</span>
+                        <span>{labels[row.top_class] ?? row.top_class}</span>
+                        <b>{Math.round(row.confidence * 100)}%</b>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="liveResult">
@@ -634,8 +760,8 @@ export default function Home() {
             </div>
           )}
 
-          {stress && !stress.demo_mode && (
-            <div className="stressResults">
+          {stress && !stress.demo_mode && sandboxTab !== "robustness" && (
+            <div className="stressResults compactStressResults">
               <div className="stabilityCard">
                 <span>Top-class stability</span>
                 <strong>{Math.round((stress.stability ?? 0) * 100)}%</strong>
