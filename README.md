@@ -155,3 +155,59 @@ upload image
 ```
 
 This positions DermaLens as an explainable medical-ML research tool rather than claiming to diagnose cancer.
+
+
+## Quality checks
+
+GitHub Actions builds the Next.js frontend and runs backend API tests on pushes and pull requests.
+
+To verify dataset splits locally:
+
+```bash
+python ml/check_splits.py \
+  --train data/splits/train.csv \
+  --val data/splits/val.csv \
+  --test data/splits/test.csv
+```
+
+This checks that no `lesion_id` appears in more than one split.
+
+## Robustness experiment
+
+After training:
+
+```bash
+python ml/robustness.py \
+  --image path/to/example.jpg \
+  --weights models/dermalens_efficientnet_b0.pt
+```
+
+This compares model output after brightness, contrast, and blur perturbations.
+
+## Deployment
+
+### Frontend
+
+The `frontend/` folder is Vercel-ready.
+
+Set:
+
+```
+NEXT_PUBLIC_API_URL=https://your-api-host.example
+```
+
+### Backend
+
+The repository includes a Dockerfile and Render service definition. The API reads allowed frontend origins from:
+
+```
+CORS_ORIGINS=https://your-frontend.example
+```
+
+Multiple origins can be comma-separated.
+
+## Privacy note
+
+The default API processes image bytes in memory and does not intentionally write uploads to disk. Production deployments should use HTTPS and avoid request logging that captures medical images.
+
+See `MODEL_CARD.md` for intended use and evaluation requirements, and `SECURITY.md` for deployment/privacy considerations.
