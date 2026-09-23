@@ -344,9 +344,11 @@ export default function Home() {
       <section className="scrollStory fullBleed" id="product" ref={storyRef}>
         <div className="storySticky">
           <div className="storyCopy">
-            <span className="storyEyebrow">{story[activeStory].eyebrow}</span>
-            <h2>{story[activeStory].title}</h2>
-            <p>{story[activeStory].body}</p>
+            <div className="storyCopySwap" key={activeStory}>
+              <span className="storyEyebrow">{story[activeStory].eyebrow}</span>
+              <h2>{story[activeStory].title}</h2>
+              <p>{story[activeStory].body}</p>
+            </div>
             <div className="storyDots" aria-label="Scroll story progress">
               {story.map((_, index) => (
                 <button
@@ -370,8 +372,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="storyScreen">
-              {activeStory === 0 && (
+            <div className="storyScreen storyScreenStack">
+              <div className={activeStory === 0 ? "storyPane active" : "storyPane"}>
                 <div className="analyzeMock">
                   <div className="mockImage">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -389,9 +391,9 @@ export default function Home() {
                     </ul>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {activeStory === 1 && (
+              <div className={activeStory === 1 ? "storyPane active" : "storyPane"}>
                 <div className="attentionMock">
                   <div className="attentionPhoto">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -407,9 +409,9 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {activeStory === 2 && (
+              <div className={activeStory === 2 ? "storyPane active" : "storyPane"}>
                 <div className="robustMock">
                   {[
                     ["Original", "none"],
@@ -428,9 +430,9 @@ export default function Home() {
                     <strong>80%</strong>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {activeStory === 3 && (
+              <div className={activeStory === 3 ? "storyPane active" : "storyPane"}>
                 <div className="evidenceMock">
                   <div className="evidenceIntro">
                     <span>Held-out evaluation</span>
@@ -443,7 +445,7 @@ export default function Home() {
                     <div><span>Final test results</span><b>Pending training</b></div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
