@@ -6,8 +6,10 @@ type Prediction = {
   top_class: string;
   confidence: number;
   uncertainty: number;
+  entropy: number;
   probabilities: Record<string, number>;
   demo_mode: boolean;
+  heatmap_data_url: string | null;
   disclaimer: string;
 };
 
@@ -31,7 +33,6 @@ export default function Home() {
 
   async function analyze() {
     if (!file) return;
-
     setLoading(true);
     setError("");
     setResult(null);
@@ -47,11 +48,7 @@ export default function Home() {
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail ?? "Analysis failed.");
-      }
-
+      if (!response.ok) throw new Error(data.detail ?? "Analysis failed.");
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed.");
@@ -68,15 +65,15 @@ export default function Home() {
     <main>
       <nav>
         <div className="brand">DermaLens</div>
-        <div className="badge">Research prototype</div>
+        <div className="badge">Educational research prototype</div>
       </nav>
 
       <section className="hero">
         <p className="eyebrow">Explainable medical-image ML</p>
         <h1>See what the model sees.</h1>
         <p className="lede">
-          Explore how a skin-lesion classifier responds to an image, including
-          uncertainty and transparent class probabilities.
+          Explore a skin-lesion classifier through class probabilities,
+          uncertainty, and an attention heatmap instead of a black-box answer.
         </p>
       </section>
 
@@ -129,8 +126,8 @@ export default function Home() {
             <div className="demo">
               <h2>Model not loaded yet</h2>
               <p>
-                The app is running correctly, but trained weights have not been
-                installed. No medical prediction was generated.
+                The app is working, but trained weights are not installed.
+                No medical prediction was generated.
               </p>
             </div>
           ) : (
@@ -143,9 +140,15 @@ export default function Home() {
                 <strong>{Math.round(result.confidence * 100)}%</strong>
               </div>
 
-              <div className="uncertainty">
-                <span>Uncertainty</span>
-                <strong>{Math.round(result.uncertainty * 100)}%</strong>
+              <div className="metricStrip">
+                <div>
+                  <span>1 − top score</span>
+                  <strong>{Math.round(result.uncertainty * 100)}%</strong>
+                </div>
+                <div>
+                  <span>Normalized entropy</span>
+                  <strong>{Math.round(result.entropy * 100)}%</strong>
+                </div>
               </div>
 
               <div className="bars">
@@ -166,15 +169,32 @@ export default function Home() {
         </div>
       </section>
 
+      {result?.heatmap_data_url && !result.demo_mode && (
+        <section className="heatmapSection">
+          <div>
+            <p className="kicker">03 — Model attention</p>
+            <h2>Where the network focused.</h2>
+            <p className="muted">
+              Grad-CAM highlights regions that most influenced the top-scoring class.
+              It does not prove that a highlighted feature is medically meaningful.
+            </p>
+          </div>
+          <div className="heatmapFrame">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={result.heatmap_data_url} alt="Grad-CAM model attention heatmap" />
+          </div>
+        </section>
+      )}
+
       <section className="explain">
-        <p className="kicker">03 — Why this matters</p>
+        <p className="kicker">04 — Limitations</p>
         <div className="explainGrid">
           <h2>A model score is not a diagnosis.</h2>
           <p>
-            DermaLens is designed to make model behavior visible rather than hide
-            it behind a single answer. The final CAC version will add Grad-CAM
-            attention maps and robustness tests so users can see both what the
-            model focuses on and when its predictions become unstable.
+            DermaLens is an educational research system. Image quality, dataset
+            bias, skin tone representation, device differences, class imbalance,
+            and distribution shift can all change model behavior. Concerning
+            lesions should be evaluated by a qualified clinician.
           </p>
         </div>
       </section>
