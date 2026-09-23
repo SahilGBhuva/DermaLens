@@ -308,6 +308,62 @@ export default function Home() {
               <path d="M0 85 C48 83 75 48 104 48 C140 48 150 76 220 79" />
             </svg>
           </article>
+
+          <article className="railCard copyCard">
+            <span>Research, not diagnosis.</span>
+            <strong>Measure first.<br />Claim second.</strong>
+          </article>
+
+          <article className="railCard labCard secondaryLabCard">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LAB_IMAGE} alt="" />
+          </article>
+
+          <article className="railCard searchCard">
+            <span className="searchIcon">⌕</span>
+            <div>
+              <i />
+              <i />
+              <i />
+            </div>
+            <small>Inspect every class</small>
+          </article>
+
+          <article className="railCard robustnessRailCard">
+            <span>Stress test</span>
+            <div className="robustnessThumbRow">
+              {[0, 1, 2, 3].map((item) => (
+                <div key={item}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={LESION_IMAGE}
+                    alt=""
+                    style={{
+                      filter:
+                        item === 1
+                          ? "brightness(1.2)"
+                          : item === 2
+                            ? "brightness(.72)"
+                            : item === 3
+                              ? "contrast(.68)"
+                              : "none",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="railCard editorialCard">
+            <span>Better skin health</span>
+            <strong>through<br />transparent AI.</strong>
+          </article>
+
+          <article className="railCard imageCard secondLesionCard">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LESION_IMAGE} alt="" />
+            <span>Attention ≠ diagnosis</span>
+          </article>
         </div>
 
         <div className="heroComposer">
