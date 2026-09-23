@@ -27,6 +27,20 @@ type StressResponse = {
   results: StressRow[];
 };
 
+type ResearchStatus = {
+  model_loaded: boolean;
+  evaluation_available: boolean;
+  evaluation: null | {
+    accuracy: number | null;
+    balanced_accuracy: number | null;
+    macro_f1: number | null;
+    weighted_f1: number | null;
+    macro_ovr_roc_auc: number | null;
+  };
+  implemented: Record<string, boolean>;
+  note: string;
+};
+
 const labels: Record<string, string> = {
   akiec: "Actinic keratosis / intraepithelial carcinoma",
   bcc: "Basal cell carcinoma",
@@ -44,8 +58,19 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [stressLoading, setStressLoading] = useState(false);
   const [error, setError] = useState("");
+  const [research, setResearch] = useState<ResearchStatus | null>(null);
 
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
+
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    fetch(`${base}/research-status`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (data) setResearch(data);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -304,8 +329,71 @@ export default function Home() {
         </section>
       )}
 
+
+      <section className="researchSection">
+        <div className="researchHeading">
+          <div>
+            <p className="kicker">05 — Research status</p>
+            <h2>What is built. What is actually proven.</h2>
+          </div>
+          <p className="muted">
+            DermaLens keeps implementation claims separate from measured model
+            performance. Test metrics only appear after a real held-out evaluation.
+          </p>
+        </div>
+
+        <div className="researchGrid">
+          <div className="researchChecklist">
+            {[
+              ["Lesion-level split", "lesion_level_split"],
+              ["Class-weighted training", "class_weighted_training"],
+              ["Held-out test pipeline", "held_out_test_pipeline"],
+              ["Grad-CAM explainability", "grad_cam"],
+              ["Robustness lab", "robustness_lab"],
+            ].map(([label, key]) => (
+              <div className="checkRow" key={key}>
+                <span>{label}</span>
+                <strong>{research?.implemented?.[key] ? "Implemented" : "—"}</strong>
+              </div>
+            ))}
+          </div>
+
+          <div className="metricPanel">
+            <div className="metricPanelTop">
+              <span>Held-out evaluation</span>
+              <strong>
+                {research?.evaluation_available ? "Available" : "Pending training"}
+              </strong>
+            </div>
+
+            {research?.evaluation_available && research.evaluation ? (
+              <div className="evaluationMetrics">
+                {[
+                  ["Accuracy", research.evaluation.accuracy],
+                  ["Balanced accuracy", research.evaluation.balanced_accuracy],
+                  ["Macro F1", research.evaluation.macro_f1],
+                  ["ROC-AUC", research.evaluation.macro_ovr_roc_auc],
+                ].map(([label, value]) => (
+                  <div key={String(label)}>
+                    <span>{label}</span>
+                    <strong>
+                      {typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "—"}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted researchPending">
+                No performance number is shown until trained weights are evaluated
+                on the untouched test split.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section className="explain">
-        <p className="kicker">05 — Limitations</p>
+        <p className="kicker">06 — Limitations</p>
         <div className="explainGrid">
           <h2>A model score is not a diagnosis.</h2>
           <p>
