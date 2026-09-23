@@ -1,7 +1,9 @@
 import argparse
 import json
+import random
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import torch
 from sklearn.utils.class_weight import compute_class_weight
@@ -47,6 +49,10 @@ def main():
     parser.add_argument("--history", default="models/training_history.json")
     args = parser.parse_args()
 
+    random.seed(42)
+    np.random.seed(42)
+    torch.manual_seed(42)
+
     class_to_idx = {name: i for i, name in enumerate(CLASSES)}
 
     train_ds = SkinLesionDataset(args.train_csv, class_to_idx, make_transforms(True))
@@ -59,7 +65,7 @@ def main():
     labels = train_df["label"].map(class_to_idx).to_numpy()
     weights = compute_class_weight(
         class_weight="balanced",
-        classes=list(range(len(CLASSES))),
+        classes=np.arange(len(CLASSES)),
         y=labels,
     )
 
