@@ -1385,9 +1385,9 @@ main {
 }
 
 .resultStats {
-  margin: 28px 0;
+  margin: 28px 0 18px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -2461,4 +2461,37 @@ button.roundPill {
 @keyframes loadingPulse {
   from { transform: scale(.9); }
   to { transform: scale(1.15); }
+}
+
+
+.modelFacts {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.modelFacts span {
+  min-height: 28px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(244,248,253,.72);
+  color: #6c809b;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+@media (max-width: 760px) {
+  .resultStats {
+    grid-template-columns: 1fr;
+  }
+
+  .resultStats div + div {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
 }
