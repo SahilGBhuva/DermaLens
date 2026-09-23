@@ -151,6 +151,18 @@ export default function Home() {
   }, []);
 
   function chooseFile(nextFile: File | null) {
+    if (nextFile) {
+      const allowed = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowed.includes(nextFile.type)) {
+        setError("Choose a JPEG, PNG, or WebP image.");
+        return;
+      }
+      if (nextFile.size > 10 * 1024 * 1024) {
+        setError("Image must be under 10 MB.");
+        return;
+      }
+    }
+
     setFile(nextFile);
     setResult(null);
     setStress(null);
@@ -158,11 +170,47 @@ export default function Home() {
     setError("");
   }
 
+  function resetSandbox() {
+    setFile(null);
+    setResult(null);
+    setStress(null);
+    setSandboxTab("prediction");
+    setError("");
+  }
+
+  function exportResearchResult() {
+    if (!result || result.demo_mode) return;
+    const report = {
+      generated_at: new Date().toISOString(),
+      file_name: file?.name ?? null,
+      top_class: result.top_class,
+      top_class_label: labels[result.top_class] ?? result.top_class,
+      confidence: result.confidence,
+      uncertainty: result.uncertainty,
+      entropy: result.entropy,
+      probabilities: result.probabilities,
+      robustness: stress,
+      disclaimer: result.disclaimer,
+    };
+
+    const blob = new Blob([JSON.stringify(report, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "dermalens-research-result.json";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function loadSampleImage() {
     setSampleLoading(true);
     setError("");
     try {
-      const response = await fetch(LESION_IMAGE);
+      const response = await fetch("/api/sample");
       if (!response.ok) throw new Error("Could not load the sample image.");
       const blob = await response.blob();
       const sample = new File([blob], "sample-lesion.jpg", {
@@ -571,13 +619,21 @@ export default function Home() {
               <span className="sandboxLogo">D</span>
               <strong>DermaLens Sandbox</strong>
             </div>
-            <div className="healthPill">
-              <i className={research?.model_loaded ? "healthDot live" : apiOnline ? "healthDot api" : "healthDot"} />
-              {research?.model_loaded
-                ? "Model online"
-                : apiOnline
-                  ? "API online · weights pending"
-                  : "Local mode"}
+            <div className="sandboxTopActions">
+              <div className="healthPill">
+                <i className={research?.model_loaded ? "healthDot live" : apiOnline ? "healthDot api" : "healthDot"} />
+                {research?.model_loaded
+                  ? "Model online"
+                  : apiOnline
+                    ? "API online · weights pending"
+                    : "Local mode"}
+              </div>
+              <button className="resetButton" onClick={resetSandbox} disabled={!file && !result}>
+                Reset
+              </button>
+              <button className="exportButton" onClick={exportResearchResult} disabled={!result || result.demo_mode}>
+                Export result
+              </button>
             </div>
           </div>
 
