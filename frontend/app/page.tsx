@@ -300,6 +300,12 @@ export default function Home() {
     ? Object.entries(result.probabilities).sort((a, b) => b[1] - a[1])
     : [];
 
+  const fileSize = file
+    ? file.size >= 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.max(1, Math.round(file.size / 1024))} KB`
+    : "";
+
   return (
     <main>
       <div className="announcement">
@@ -665,7 +671,10 @@ export default function Home() {
                   <div className="sandboxPreview">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={preview} alt="Selected lesion preview" />
-                    <span>{file?.name}</span>
+                    <div className="previewMeta">
+                      <span>{file?.name}</span>
+                      <small>{fileSize}</small>
+                    </div>
                   </div>
                 ) : (
                   <div className="uploadEmpty">
@@ -729,7 +738,20 @@ export default function Home() {
                 </div>
               </div>
 
-              {!result ? (
+              {loading ? (
+                <div className="analysisLoading" aria-live="polite">
+                  <div className="loadingOrb">
+                    <span />
+                  </div>
+                  <strong>Analyzing image</strong>
+                  <p>Preparing the image, running inference, and building the explanation.</p>
+                  <div className="loadingSteps">
+                    <div><i className="done" /><span>Validate image</span></div>
+                    <div><i className="active" /><span>Run model</span></div>
+                    <div><i /><span>Generate attention map</span></div>
+                  </div>
+                </div>
+              ) : !result ? (
                 <div className="resultEmpty">
                   <div className="emptyHalo" />
                   <strong>Model output will appear here.</strong>
