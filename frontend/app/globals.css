@@ -2324,3 +2324,141 @@ button.roundPill {
 .storyDots {
   margin-top: 10px;
 }
+
+
+.previewMeta {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,.65);
+  border-radius: 9px;
+  background: rgba(255,255,255,.84);
+  backdrop-filter: blur(8px);
+  color: #40536c;
+}
+
+.previewMeta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.previewMeta small {
+  flex: 0 0 auto;
+  color: #7789a0;
+  font-size: 9px;
+}
+
+.sandboxPreview > span {
+  display: none;
+}
+
+.analysisLoading {
+  margin: auto;
+  width: min(100%, 520px);
+  text-align: center;
+}
+
+.loadingOrb {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  margin: 0 auto 26px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,.96), transparent 13%),
+    radial-gradient(circle, #c8dcf3, #9bb8db 72%);
+  box-shadow: 0 24px 48px rgba(74,102,135,.16);
+  overflow: hidden;
+}
+
+.loadingOrb::after {
+  content: "";
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  height: 34%;
+  top: -40%;
+  background: linear-gradient(to bottom, transparent, rgba(255,255,255,.6), transparent);
+  animation: loadingScan 1.7s ease-in-out infinite;
+}
+
+.loadingOrb span {
+  position: absolute;
+  inset: 21px;
+  border: 1px solid rgba(255,255,255,.58);
+  border-radius: 50%;
+}
+
+.analysisLoading > strong {
+  display: block;
+  font-family: Georgia, serif;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -.03em;
+}
+
+.analysisLoading > p {
+  max-width: 430px;
+  margin: 10px auto 0;
+  color: #7487a1;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.loadingSteps {
+  width: min(100%, 360px);
+  margin: 28px auto 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255,255,255,.58);
+}
+
+.loadingSteps div {
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 9px;
+  align-items: center;
+  color: #71839a;
+  font-size: 10px;
+  text-align: left;
+}
+
+.loadingSteps i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c3d0df;
+}
+
+.loadingSteps i.done {
+  background: #69a681;
+}
+
+.loadingSteps i.active {
+  background: #4f83d2;
+  box-shadow: 0 0 0 5px rgba(79,131,210,.1);
+  animation: loadingPulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes loadingScan {
+  0% { top: -40%; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { top: 110%; opacity: 0; }
+}
+
+@keyframes loadingPulse {
+  from { transform: scale(.9); }
+  to { transform: scale(1.15); }
+}
