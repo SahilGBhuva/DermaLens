@@ -6,7 +6,7 @@ from PIL import Image, UnidentifiedImageError
 
 from .model import DermaLensModel
 
-app = FastAPI(title="DermaLens API", version="0.1.0")
+app = FastAPI(title="DermaLens API", version="0.2.0")
 model = DermaLensModel()
 
 app.add_middleware(
@@ -29,7 +29,6 @@ async def predict(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Upload a JPEG, PNG, or WebP image.")
 
     raw = await file.read()
-
     if len(raw) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Image must be under 10 MB.")
 
@@ -44,8 +43,10 @@ async def predict(file: UploadFile = File(...)):
         "top_class": result.top_class,
         "confidence": result.confidence,
         "uncertainty": result.uncertainty,
+        "entropy": result.entropy,
         "probabilities": result.probabilities,
         "demo_mode": result.demo_mode,
+        "heatmap_data_url": result.heatmap_data_url,
         "disclaimer": (
             "DermaLens is an educational research tool and is not a diagnosis or medical device. "
             "A clinician should evaluate any concerning lesion."
