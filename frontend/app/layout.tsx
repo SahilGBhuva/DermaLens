@@ -1,8 +1,9 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "DermaLens",
-  description: "Educational ML analysis for skin-lesion images",
+  title: "DermaLens — Interrogate the Model",
+  description:
+    "An explainable medical-image ML research experience for inspecting predictions, uncertainty, attention, robustness, and model limitations.",
 };
 
 export default function RootLayout({
