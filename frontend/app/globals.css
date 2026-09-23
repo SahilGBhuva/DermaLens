@@ -203,6 +203,7 @@ main {
   display: grid;
   grid-template-columns: .75fr .85fr 1fr 1.05fr 1.25fr .9fr .8fr;
   gap: 12px;
+  row-gap: 10px;
   align-items: stretch;
   overflow: hidden;
   perspective: 1600px;
@@ -437,6 +438,143 @@ main {
 
 .chartCard path:last-child {
   stroke: #8db3dd;
+}
+
+.copyCard {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  color: #526883;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(255,255,255,.96), transparent 24%),
+    linear-gradient(145deg, #eff5fc, #dfeaf7);
+}
+
+.copyCard span,
+.robustnessRailCard > span,
+.editorialCard > span {
+  font-size: 10px;
+  color: #6e83a0;
+}
+
+.copyCard strong,
+.editorialCard strong {
+  font-family: Georgia, serif;
+  font-weight: 500;
+  font-size: 24px;
+  line-height: 1.04;
+}
+
+.secondaryLabCard {
+  grid-column: span 2;
+}
+
+.searchCard {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: 1fr auto;
+  gap: 14px;
+  text-align: left;
+  background: rgba(255,255,255,.68);
+}
+
+.searchIcon {
+  font-size: 32px;
+  color: #6883a6;
+}
+
+.searchCard > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 9px;
+}
+
+.searchCard i {
+  display: block;
+  height: 6px;
+  border-radius: 99px;
+  background: #d3e1f2;
+}
+
+.searchCard i:nth-child(1) { width: 86%; }
+.searchCard i:nth-child(2) { width: 68%; }
+.searchCard i:nth-child(3) { width: 48%; }
+
+.searchCard small {
+  grid-column: 1 / -1;
+  color: #768aa6;
+  font-size: 9px;
+}
+
+.robustnessRailCard {
+  padding: 18px;
+  text-align: left;
+  background: rgba(255,255,255,.68);
+}
+
+.robustnessThumbRow {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.robustnessThumbRow div {
+  overflow: hidden;
+  border-radius: 8px;
+  aspect-ratio: 1;
+}
+
+.robustnessThumbRow img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.editorialCard {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  color: white;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(255,255,255,.18), transparent 26%),
+    linear-gradient(145deg, #6c8db9, #425f88);
+}
+
+.editorialCard > span {
+  color: rgba(255,255,255,.72);
+}
+
+.secondLesionCard span {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: 9px;
+  background: rgba(255,255,255,.8);
+  color: #536983;
+  font-size: 9px;
+  backdrop-filter: blur(8px);
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 70px;
+  width: 100vw;
+  height: 300px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(238,244,251,.82) 44%, #eef4fb 86%);
+  z-index: 2;
 }
 
 .heroComposer {
@@ -1591,8 +1729,12 @@ a:focus-visible,
     grid-template-columns: repeat(4, 1fr);
   }
 
-  .visualRail .railCard:nth-child(n+5) {
+  .visualRail .railCard:nth-child(n+9) {
     display: none;
+  }
+
+  .secondaryLabCard {
+    grid-column: span 1;
   }
 
   .storySticky,
@@ -1665,6 +1807,9 @@ a:focus-visible,
     grid-template-columns: 1.25fr 1fr 1.15fr;
     gap: 8px;
     padding: 0 10px;
+    transform: none;
+    animation: none;
+    perspective: none;
   }
 
   .visualRail .railCard:nth-child(n+4) {
