@@ -211,3 +211,21 @@ Multiple origins can be comma-separated.
 The default API processes image bytes in memory and does not intentionally write uploads to disk. Production deployments should use HTTPS and avoid request logging that captures medical images.
 
 See `MODEL_CARD.md` for intended use and evaluation requirements, and `SECURITY.md` for deployment/privacy considerations.
+
+
+## One-command training pipeline
+
+After placing HAM10000 metadata and images locally, the complete leakage check, training, and held-out evaluation can be run with:
+
+```bash
+python ml/run_pipeline.py \
+  --metadata data/raw/HAM10000_metadata.csv \
+  --images-dir data/raw/images \
+  --epochs 12
+```
+
+The final evaluation includes imbalance-aware and calibration-aware metrics, including balanced accuracy, macro F1, per-class sensitivity/specificity, multiclass ROC-AUC, expected calibration error, and multiclass Brier score.
+
+## CAC presentation
+
+See `CAC_DEMO.md` for a concise demonstration structure focused on originality, implementation/user experience, and demonstrated programming skill.
