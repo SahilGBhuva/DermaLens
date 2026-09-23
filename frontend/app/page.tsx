@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { DragEvent, useEffect, useMemo, useState } from "react";
 
 type Prediction = {
   top_class: string;
@@ -11,6 +11,20 @@ type Prediction = {
   demo_mode: boolean;
   heatmap_data_url: string | null;
   disclaimer: string;
+};
+
+type StressRow = {
+  variant: string;
+  top_class: string;
+  confidence: number;
+  entropy: number;
+};
+
+type StressResponse = {
+  demo_mode: boolean;
+  stability: number | null;
+  original_class?: string;
+  results: StressRow[];
 };
 
 const labels: Record<string, string> = {
@@ -26,16 +40,38 @@ const labels: Record<string, string> = {
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<Prediction | null>(null);
+  const [stress, setStress] = useState<StressResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [stressLoading, setStressLoading] = useState(false);
   const [error, setError] = useState("");
 
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
+
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
+  function chooseFile(nextFile: File | null) {
+    setFile(nextFile);
+    setResult(null);
+    setStress(null);
+    setError("");
+  }
+
+  function onDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    const dropped = event.dataTransfer.files?.[0] ?? null;
+    if (dropped) chooseFile(dropped);
+  }
 
   async function analyze() {
     if (!file) return;
     setLoading(true);
     setError("");
     setResult(null);
+    setStress(null);
 
     const form = new FormData();
     form.append("file", file);
@@ -57,6 +93,30 @@ export default function Home() {
     }
   }
 
+  async function runStressTest() {
+    if (!file || !result || result.demo_mode) return;
+    setStressLoading(true);
+    setError("");
+
+    const form = new FormData();
+    form.append("file", file);
+
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      const response = await fetch(`${base}/stress-test`, {
+        method: "POST",
+        body: form,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail ?? "Stress test failed.");
+      setStress(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Stress test failed.");
+    } finally {
+      setStressLoading(false);
+    }
+  }
+
   const sorted = result
     ? Object.entries(result.probabilities).sort((a, b) => b[1] - a[1])
     : [];
@@ -72,8 +132,8 @@ export default function Home() {
         <p className="eyebrow">Explainable medical-image ML</p>
         <h1>See what the model sees.</h1>
         <p className="lede">
-          Explore a skin-lesion classifier through class probabilities,
-          uncertainty, and an attention heatmap instead of a black-box answer.
+          Explore how a skin-lesion model responds, where it focuses, and whether
+          its answer survives simple changes in image conditions.
         </p>
       </section>
 
@@ -85,7 +145,11 @@ export default function Home() {
             <p className="muted">JPEG, PNG, or WebP. Maximum 10 MB.</p>
           </div>
 
-          <label className="dropzone">
+          <label
+            className="dropzone"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={onDrop}
+          >
             {preview ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={preview} alt="Selected lesion preview" />
@@ -99,11 +163,7 @@ export default function Home() {
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => {
-                setFile(e.target.files?.[0] ?? null);
-                setResult(null);
-                setError("");
-              }}
+              onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
             />
           </label>
 
@@ -175,8 +235,8 @@ export default function Home() {
             <p className="kicker">03 — Model attention</p>
             <h2>Where the network focused.</h2>
             <p className="muted">
-              Grad-CAM highlights regions that most influenced the top-scoring class.
-              It does not prove that a highlighted feature is medically meaningful.
+              Grad-CAM highlights image regions that influenced the top-scoring
+              class. Attention does not prove medical significance.
             </p>
           </div>
           <div className="heatmapFrame">
@@ -186,8 +246,66 @@ export default function Home() {
         </section>
       )}
 
+      {result && !result.demo_mode && (
+        <section className="stressSection">
+          <div className="stressIntro">
+            <div>
+              <p className="kicker">04 — Robustness lab</p>
+              <h2>Does the answer survive a worse photo?</h2>
+              <p className="muted">
+                Re-run the same image after controlled brightness, contrast, and
+                blur changes. A class flip is a visible warning that the model is
+                sensitive to image conditions.
+              </p>
+            </div>
+            <button
+              className="secondaryButton"
+              onClick={runStressTest}
+              disabled={stressLoading}
+            >
+              {stressLoading ? "Stress testing…" : "Run stress test"}
+            </button>
+          </div>
+
+          {stress && !stress.demo_mode && (
+            <div className="stressResults">
+              <div className="stabilityScore">
+                <span>Top-class stability</span>
+                <strong>{Math.round((stress.stability ?? 0) * 100)}%</strong>
+                <small>
+                  Share of tested image conditions that kept the original top class.
+                </small>
+              </div>
+
+              <div className="stressTable">
+                <div className="stressHeader">
+                  <span>Condition</span>
+                  <span>Top class</span>
+                  <span>Score</span>
+                  <span>Entropy</span>
+                </div>
+                {stress.results.map((row) => {
+                  const changed = row.top_class !== stress.original_class;
+                  return (
+                    <div className="stressRow" key={row.variant}>
+                      <span>{row.variant}</span>
+                      <span className={changed ? "changedClass" : ""}>
+                        {labels[row.top_class] ?? row.top_class}
+                        {changed ? " · changed" : ""}
+                      </span>
+                      <span>{Math.round(row.confidence * 100)}%</span>
+                      <span>{Math.round(row.entropy * 100)}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="explain">
-        <p className="kicker">04 — Limitations</p>
+        <p className="kicker">05 — Limitations</p>
         <div className="explainGrid">
           <h2>A model score is not a diagnosis.</h2>
           <p>
