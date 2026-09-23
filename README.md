@@ -4,34 +4,91 @@ DermaLens is an educational/research web app for experimenting with machine-lear
 
 > **Important:** DermaLens is not a medical device and does not diagnose cancer. Its outputs are for education and model research only.
 
-## What it does
+## What is implemented
 
-- Upload a skin-lesion image
-- Run an image classifier
-- Show class probabilities and uncertainty
-- Generate a Grad-CAM style explanation when supported by the loaded model
-- Keep medical-safety language visible in the UI
-- Provide training/evaluation scripts for a HAM10000-style dataset
-
-## Stack
-
-- **Frontend:** Next.js + TypeScript
-- **API / ML:** FastAPI + PyTorch
-- **Model:** EfficientNet-B0 transfer learning (7-class setup by default)
-- **Dataset target:** HAM10000 / ISIC-style image folders + metadata
+- Next.js image-upload interface
+- FastAPI + PyTorch inference API
+- EfficientNet-B0 transfer-learning pipeline
+- HAM10000 metadata preparation
+- lesion-level train/validation/test splitting to reduce leakage
+- class-weighted training for class imbalance
+- evaluation with accuracy, balanced accuracy, macro/weighted F1, confusion matrix, classification report and multiclass ROC-AUC
+- normalized predictive entropy
+- Grad-CAM attention heatmap returned by the API and shown in the UI
+- demo mode when trained weights are absent
 
 ## Project structure
 
 ```
 frontend/        Next.js app
-backend/         FastAPI inference service
-ml/              training + evaluation utilities
-models/          local trained weights (gitignored)
+backend/         FastAPI inference service + Grad-CAM
+ml/              dataset prep, training, evaluation
+models/          local weights/metrics (gitignored)
+data/            local dataset/splits (gitignored)
 ```
 
-## Run locally
+## 1. Get HAM10000
 
-### 1. Backend
+Download the HAM10000 images and `HAM10000_metadata.csv` from an authorized source such as the ISIC Archive / dataset distribution.
+
+Do not commit the dataset to GitHub.
+
+Example local layout:
+
+```
+data/
+  raw/
+    HAM10000_metadata.csv
+    images/
+      ISIC_0024306.jpg
+      ...
+```
+
+## 2. Prepare lesion-level splits
+
+```bash
+python -m pip install -r ml/requirements.txt
+
+python ml/prepare_ham10000.py \
+  --metadata data/raw/HAM10000_metadata.csv \
+  --images-dir data/raw/images \
+  --output-dir data/splits
+```
+
+This creates:
+
+```
+data/splits/train.csv
+data/splits/val.csv
+data/splits/test.csv
+```
+
+The split is grouped by `lesion_id`, so images of the same physical lesion are kept in one split.
+
+## 3. Train
+
+```bash
+python ml/train.py \
+  --train-csv data/splits/train.csv \
+  --val-csv data/splits/val.csv \
+  --epochs 12 \
+  --output models/dermalens_efficientnet_b0.pt
+```
+
+The training code uses ImageNet-pretrained EfficientNet-B0, augmentation, AdamW, cosine learning-rate scheduling, and class-weighted cross-entropy.
+
+## 4. Evaluate on the held-out test set
+
+```bash
+python ml/evaluate.py \
+  --csv data/splits/test.csv \
+  --weights models/dermalens_efficientnet_b0.pt \
+  --output models/evaluation.json
+```
+
+Do not use the test set to tune the model. Keep it for final evaluation.
+
+## 5. Run the API
 
 ```bash
 cd backend
@@ -41,7 +98,15 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 2. Frontend
+The backend looks for:
+
+```
+models/dermalens_efficientnet_b0.pt
+```
+
+If weights are not present, it runs in clearly labeled demo mode and returns no medical prediction.
+
+## 6. Run the frontend
 
 ```bash
 cd frontend
@@ -49,66 +114,44 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:3000.
+Open http://localhost:3000.
 
-The frontend expects the API at `http://localhost:8000`. Override with:
+Set another API URL with:
 
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-## Model weights
+## Model output
 
-Place trained weights at:
+The API returns:
+
+- seven class probabilities
+- highest-scoring class
+- max-probability confidence
+- `1 - max probability` uncertainty proxy
+- normalized predictive entropy
+- Grad-CAM attention heatmap
+- explicit research-use disclaimer
+
+The uncertainty values are model-output summaries, not calibrated probabilities of clinical correctness.
+
+## Research limitations
+
+HAM10000 is useful for education and model research, but performance on a held-out dataset does not establish clinical validity. Important limitations include image/device distribution shift, demographic representation, class imbalance, label quality, acquisition differences, and the fact that dermatoscopic images are not equivalent to ordinary phone photos.
+
+Grad-CAM visualizations show which model features influenced a score; they do not prove that those features are medically meaningful.
+
+## CAC demo story
+
+A strong demo is:
 
 ```
-models/dermalens_efficientnet_b0.pt
+upload image
+→ model produces class distribution
+→ uncertainty is shown
+→ Grad-CAM visualizes attention
+→ limitations explain when the model can fail
 ```
 
-If no weights are present, the backend starts in **demo mode** and returns a clearly labeled placeholder response. Demo mode is intentionally not presented as a real prediction.
-
-## Training
-
-Prepare a CSV with at least:
-
-- `image_path`
-- `label`
-
-Then:
-
-```bash
-python ml/train.py --csv data/train.csv --epochs 10
-```
-
-Evaluation:
-
-```bash
-python ml/evaluate.py --csv data/val.csv --weights models/dermalens_efficientnet_b0.pt
-```
-
-## Classes
-
-The default 7 HAM10000-style classes are:
-
-- akiec
-- bcc
-- bkl
-- df
-- mel
-- nv
-- vasc
-
-These are research labels, not end-user diagnoses.
-
-## CAC direction
-
-For the Congressional App Challenge, the strongest version is not merely “AI says cancer/no cancer.” The more defensible demo is:
-
-1. image analysis,
-2. transparent probabilities,
-3. explanation heatmap,
-4. uncertainty,
-5. model limitations,
-6. robustness testing across image conditions.
-
-That demonstrates both ML engineering and responsible product design.
+This positions DermaLens as an explainable medical-ML research tool rather than claiming to diagnose cancer.
