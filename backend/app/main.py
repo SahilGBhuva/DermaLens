@@ -83,6 +83,8 @@ def research_status():
                 "macro_f1": raw.get("macro_f1"),
                 "weighted_f1": raw.get("weighted_f1"),
                 "macro_ovr_roc_auc": raw.get("macro_ovr_roc_auc"),
+                "expected_calibration_error": raw.get("expected_calibration_error"),
+                "multiclass_brier_score": raw.get("multiclass_brier_score"),
             }
         except (OSError, json.JSONDecodeError):
             evaluation = None
