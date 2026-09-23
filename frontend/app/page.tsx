@@ -1,6 +1,12 @@
 "use client";
 
-import { DragEvent, useEffect, useMemo, useState } from "react";
+import {
+  DragEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type Prediction = {
   top_class: string;
@@ -51,13 +57,37 @@ const labels: Record<string, string> = {
   vasc: "Vascular lesion",
 };
 
-const researchItems = [
-  ["Lesion-level split", "lesion_level_split"],
-  ["Class-weighted training", "class_weighted_training"],
-  ["Held-out test pipeline", "held_out_test_pipeline"],
-  ["Grad-CAM explainability", "grad_cam"],
-  ["Robustness lab", "robustness_lab"],
-] as const;
+const LESION_IMAGE =
+  "https://isic-archive.s3.amazonaws.com/images/ISIC_0016128.jpg";
+const LAB_IMAGE =
+  "https://cdn2.picryl.com/photo/2008/07/24/researcher-looks-through-microscope-2-bfc551-1024.jpg";
+
+const story = [
+  {
+    eyebrow: "01 / Analyze",
+    title: "Start with the image.",
+    body:
+      "Upload a dermatoscopic image and inspect the model's complete probability distribution instead of only a single label.",
+  },
+  {
+    eyebrow: "02 / Attention",
+    title: "See what influenced it.",
+    body:
+      "Grad-CAM reveals where the network concentrated its attention, helping separate a prediction from the visual evidence behind it.",
+  },
+  {
+    eyebrow: "03 / Robustness",
+    title: "Change the conditions.",
+    body:
+      "Brightness, contrast, and blur perturbations expose whether the same image keeps producing the same top class.",
+  },
+  {
+    eyebrow: "04 / Evidence",
+    title: "Keep claims measurable.",
+    body:
+      "DermaLens separates what is implemented from what has actually been measured on the held-out evaluation split.",
+  },
+];
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -69,6 +99,8 @@ export default function Home() {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+  const [activeStory, setActiveStory] = useState(0);
+  const storyRef = useRef<HTMLElement | null>(null);
 
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
 
@@ -94,6 +126,26 @@ export default function Home() {
       if (preview) URL.revokeObjectURL(preview);
     };
   }, [preview]);
+
+  useEffect(() => {
+    function updateStory() {
+      const node = storyRef.current;
+      if (!node) return;
+      const rect = node.getBoundingClientRect();
+      const scrollable = Math.max(node.offsetHeight - window.innerHeight, 1);
+      const passed = Math.min(Math.max(-rect.top, 0), scrollable);
+      const progress = passed / scrollable;
+      setActiveStory(Math.min(3, Math.floor(progress * 4)));
+    }
+
+    updateStory();
+    window.addEventListener("scroll", updateStory, { passive: true });
+    window.addEventListener("resize", updateStory);
+    return () => {
+      window.removeEventListener("scroll", updateStory);
+      window.removeEventListener("resize", updateStory);
+    };
+  }, []);
 
   function chooseFile(nextFile: File | null) {
     setFile(nextFile);
@@ -167,422 +219,483 @@ export default function Home() {
 
   return (
     <main>
-      <nav className="siteNav">
+      <div className="announcement">
+        <span className="announceDot">✦</span>
+        DermaLens research preview is live.
+        <a href="#sandbox">Try the sandbox ↗</a>
+      </div>
+
+      <nav className="floatingNav">
         <a className="brand" href="#top" aria-label="DermaLens home">
-          <span className="brandMark" />
-          DermaLens
+          <span className="brandIcon">D</span>
+          <span>DermaLens</span>
         </a>
+
         <div className="navLinks">
-          <a href="#analyze">Analyze</a>
-          <a href="#research">Research</a>
-          <a href="#limits">Limits</a>
+          <a href="#product">Product⌄</a>
+          <a href="#research">Research⌄</a>
+          <a href="#sandbox">Sandbox</a>
+          <a href="#evidence">Evidence⌄</a>
         </div>
-        <div className="navStatus">
-          <span
-            className={
-              research?.model_loaded
-                ? "statusDot live"
-                : apiOnline
-                  ? "statusDot api"
-                  : "statusDot"
-            }
-          />
-          {research?.model_loaded
-            ? "Model online"
-            : apiOnline
-              ? "API online · model pending"
-              : apiOnline === false
-                ? "Local API offline"
-                : "Checking system"}
-        </div>
+
+        <button
+          className="navCta"
+          onClick={() =>
+            document.getElementById("sandbox")?.scrollIntoView({ behavior: "smooth" })
+          }
+        >
+          Try DermaLens
+        </button>
       </nav>
 
       <section className="hero" id="top">
-        <div className="heroCopy">
-          <div className="heroEyebrow">
-            <span>Explainable medical-image research</span>
-            <span>DermaLens / 2026</span>
-          </div>
+        <p className="heroKicker">Explainable image intelligence</p>
+        <h1>See what the model sees.</h1>
+        <p className="heroSub">
+          Inspect probability, attention, and robustness for skin-lesion image
+          classification in one continuous research workflow.
+        </p>
 
-          <h1>
-            Understand the prediction.
-            <br />
-            <em>See what changes it.</em>
-          </h1>
+        <div className="visualRail fullBleed" aria-label="DermaLens capabilities">
+          <article className="railCard imageCard">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LESION_IMAGE} alt="" />
+          </article>
 
-          <div className="heroBottom">
-            <p>
-              DermaLens makes image-classification behavior easier to inspect through
-              probability, uncertainty, attention, and robustness.
-            </p>
+          <article className="railCard riskCard">
+            <span>Top model score</span>
+            <strong>87%</strong>
+            <div className="scoreBar"><i /></div>
+            <small>example interface</small>
+          </article>
 
-            <div className="heroActions">
-              <button
-                className="primaryCta"
-                onClick={() =>
-                  document.getElementById("analyze")?.scrollIntoView({ behavior: "smooth" })
-                }
-              >
-                Try DermaLens
-                <span>↘</span>
-              </button>
-              <a className="textCta" href="#research">
-                How it works <span>→</span>
-              </a>
+          <article className="railCard heatCard">
+            <div className="fakeHeat">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={LESION_IMAGE} alt="" />
+              <div className="heatBlob heatBlobOne" />
+              <div className="heatBlob heatBlobTwo" />
             </div>
-          </div>
-        </div>
+            <span>Attention map</span>
+          </article>
 
-        <div className="heroVisual" aria-hidden="true">
-          <div className="softShape softShapeOne" />
-          <div className="softShape softShapeTwo" />
-          <div className="softCore" />
-          <div className="heroVisualCaption">
-            <span>Prediction</span>
-            <span>Attention</span>
+          <article className="railCard conditionCard">
             <span>Robustness</span>
+            <div className="miniConditions">
+              {[0, 1, 2].map((item) => (
+                <div key={item}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={LESION_IMAGE} alt="" />
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="railCard labCard">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LAB_IMAGE} alt="" />
+          </article>
+
+          <article className="railCard manifestoCard">
+            <span>Explainable AI</span>
+            <strong>From images<br />to evidence.</strong>
+          </article>
+
+          <article className="railCard chartCard">
+            <span>Prediction confidence</span>
+            <svg viewBox="0 0 220 95" role="img" aria-label="Illustrative confidence curves">
+              <path d="M0 82 C36 78 40 20 72 20 C104 20 111 76 150 76 C175 76 185 51 220 48" />
+              <path d="M0 85 C48 83 75 48 104 48 C140 48 150 76 220 79" />
+            </svg>
+          </article>
+        </div>
+
+        <div className="heroComposer">
+          <p>
+            Analyze a dermatoscopic image, show what influenced the prediction,
+            and compare robustness under lighting changes.
+          </p>
+          <div className="composerBottom">
+            <div className="composerPills">
+              <span className="roundPill">＋</span>
+              <span className="softPill">▧ Image ×</span>
+              <span className="softPill">◉ DermaLens Research⌄</span>
+            </div>
+            <button
+              className="startButton"
+              onClick={() =>
+                document.getElementById("sandbox")?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              Start <span>→</span>
+            </button>
           </div>
+        </div>
+
+        <div className="quickActions">
+          <span>▧ Analyze image</span>
+          <span>◌ View attention</span>
+          <span>◫ Test robustness</span>
+          <span>▥ Metrics</span>
+          <span>▤ Research status</span>
         </div>
       </section>
 
-      <section className="statementSection">
-        <p className="sectionIndex">00 / premise</p>
-        <div className="statement">
-          <p className="statementLead">A score is only the beginning.</p>
-          <p>
-            DermaLens helps you see <em>how a model behaves</em>, not just what it predicts.
-          </p>
-        </div>
-      </section>
-
-      <section className="analysisSection" id="analyze">
-        <div className="sectionTopline">
-          <div>
-            <p className="sectionIndex">01 / analysis</p>
-            <h2>Analyze an image.</h2>
+      <section className="scrollStory fullBleed" id="product" ref={storyRef}>
+        <div className="storySticky">
+          <div className="storyCopy">
+            <span className="storyEyebrow">{story[activeStory].eyebrow}</span>
+            <h2>{story[activeStory].title}</h2>
+            <p>{story[activeStory].body}</p>
+            <div className="storyDots" aria-label="Scroll story progress">
+              {story.map((_, index) => (
+                <button
+                  key={index}
+                  className={index === activeStory ? "storyDot active" : "storyDot"}
+                  onClick={() => setActiveStory(index)}
+                  aria-label={`Show story step ${index + 1}`}
+                />
+              ))}
+            </div>
           </div>
-          <p>
-            Upload one image and inspect its class probabilities, uncertainty,
-            attention, and stability.
-          </p>
-        </div>
 
-        <div className="analysisShell">
-          <div className="uploadPanel">
-            <div className="panelHeader">
-              <div>
-                <span className="microLabel">INPUT</span>
-                <strong>Skin-lesion image</strong>
+          <div className="storyFrame">
+            <div className="mockChrome">
+              <div className="mockBrand"><span>D</span> DermaLens</div>
+              <div className="mockTabs">
+                <span className={activeStory === 0 ? "active" : ""}>Analyze</span>
+                <span className={activeStory === 1 ? "active" : ""}>Attention</span>
+                <span className={activeStory === 2 ? "active" : ""}>Robustness</span>
+                <span className={activeStory === 3 ? "active" : ""}>Evidence</span>
               </div>
-              <span className="panelCode">IMG / RGB</span>
             </div>
 
-            <label
-              className={dragging ? "dropzone dragging" : "dropzone"}
-              onDragEnter={() => setDragging(true)}
-              onDragLeave={() => setDragging(false)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={onDrop}
-            >
-              {preview ? (
-                <div className="previewWrap">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={preview} alt="Selected lesion preview" />
-                  <div className="scanOverlay" />
-                  <div className="corner cornerTL" />
-                  <div className="corner cornerTR" />
-                  <div className="corner cornerBL" />
-                  <div className="corner cornerBR" />
-                  <span className="previewTag">{file?.name}</span>
-                </div>
-              ) : (
-                <div className="dropInner">
-                  <div className="uploadGlyph">
-                    <span>+</span>
+            <div className="storyScreen">
+              {activeStory === 0 && (
+                <div className="analyzeMock">
+                  <div className="mockImage">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={LESION_IMAGE} alt="" />
                   </div>
-                  <strong>Drop image into field</strong>
-                  <span>or click to browse · JPEG / PNG / WebP · 10 MB max</span>
+                  <div className="mockPrediction">
+                    <span>Prediction</span>
+                    <h3>Melanoma</h3>
+                    <strong>0.87</strong>
+                    <div className="mockBar"><i /></div>
+                    <ul>
+                      <li><span>Nevus</span><b>0.08</b></li>
+                      <li><span>Basal cell carcinoma</span><b>0.03</b></li>
+                      <li><span>Actinic keratosis</span><b>0.02</b></li>
+                    </ul>
+                  </div>
                 </div>
               )}
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                aria-label="Choose a skin-lesion image for analysis"
-                onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
-              />
-            </label>
 
-            <button className="analyzeButton" onClick={analyze} disabled={!file || loading}>
-              <span>{loading ? "Running inference" : "Run analysis"}</span>
-              <span className={loading ? "buttonPulse active" : "buttonPulse"} />
-            </button>
-
-            {error && <p className="error">{error}</p>}
-          </div>
-
-          <div className="resultPanel">
-            <div className="panelHeader">
-              <div>
-                <span className="microLabel">OUTPUT</span>
-                <strong>Model response</strong>
-              </div>
-              <span className="panelCode">7-CLASS / SOFTMAX</span>
-            </div>
-
-            {!result ? (
-              <div className="idleState">
-                <div className="latentMap">
-                  <span className="latentPoint p1" />
-                  <span className="latentPoint p2" />
-                  <span className="latentPoint p3" />
-                  <span className="latentPoint p4" />
-                  <span className="latentPoint p5" />
-                  <span className="latentPoint p6" />
-                  <div className="latentRing r1" />
-                  <div className="latentRing r2" />
-                  <div className="latentCross" />
-                </div>
-                <p>Awaiting image signal.</p>
-                <span>The model output will resolve here.</span>
-              </div>
-            ) : result.demo_mode ? (
-              <div className="demoState">
-                <span className="demoPill">DEMO MODE</span>
-                <h3>The interface is live. The trained model is not.</h3>
-                <p>
-                  DermaLens will never fabricate a medical prediction. Install the
-                  trained weights and real model output will appear here.
-                </p>
-              </div>
-            ) : (
-              <div className="resultContent">
-                <div className="resultLead">
-                  <div>
-                    <span className="microLabel">TOP MODEL SCORE</span>
-                    <h3>{labels[result.top_class] ?? result.top_class}</h3>
+              {activeStory === 1 && (
+                <div className="attentionMock">
+                  <div className="attentionPhoto">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={LESION_IMAGE} alt="" />
+                    <div className="heatBlob heatBlobLarge" />
                   </div>
-                  <strong>{Math.round(result.confidence * 100)}<sup>%</sup></strong>
-                </div>
-
-                <div className="metricTiles">
-                  <div>
-                    <span>Uncertainty</span>
-                    <strong>{Math.round(result.uncertainty * 100)}%</strong>
-                  </div>
-                  <div>
-                    <span>Entropy</span>
-                    <strong>{Math.round(result.entropy * 100)}%</strong>
+                  <div className="attentionText">
+                    <span>Grad-CAM</span>
+                    <h3>What influenced the top score?</h3>
+                    <p>
+                      The highlighted region marks the pixels that contributed most
+                      strongly to the model&apos;s selected class.
+                    </p>
                   </div>
                 </div>
+              )}
 
-                <div className="probabilityList">
-                  {sorted.map(([key, value], index) => (
-                    <div className="probabilityRow" key={key}>
-                      <div className="probabilityMeta">
-                        <span className="rank">0{index + 1}</span>
-                        <span>{labels[key] ?? key}</span>
-                        <strong>{(value * 100).toFixed(1)}%</strong>
-                      </div>
-                      <div className="probabilityTrack">
-                        <div style={{ width: `${value * 100}%` }} />
-                      </div>
+              {activeStory === 2 && (
+                <div className="robustMock">
+                  {[
+                    ["Original", "none"],
+                    ["Brighter", "brightness(1.25)"],
+                    ["Darker", "brightness(.72)"],
+                    ["Lower contrast", "contrast(.72)"],
+                  ].map(([name, filter]) => (
+                    <div className="robustTile" key={name}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={LESION_IMAGE} alt="" style={{ filter }} />
+                      <span>{name}</span>
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {result?.heatmap_data_url && !result.demo_mode && (
-        <section className="attentionSection">
-          <div className="attentionCopy">
-            <p className="sectionIndex">02 / attention field</p>
-            <h2>See where the network looked.</h2>
-            <p>
-              Grad-CAM reveals which image regions most influenced the top-scoring
-              class. It is a window into model behavior, not proof of medical meaning.
-            </p>
-          </div>
-          <div className="heatmapStage">
-            <div className="heatmapTop">
-              <span>GRAD-CAM / CLASS ACTIVATION</span>
-              <span>LIVE OUTPUT</span>
-            </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={result.heatmap_data_url} alt="Grad-CAM model attention heatmap" />
-            <div className="heatmapReticle" />
-          </div>
-        </section>
-      )}
-
-      <section className="robustnessSection">
-        <div className="robustnessHeader">
-          <div>
-            <p className="sectionIndex">03 / robustness</p>
-            <h2>Does the prediction stay consistent?</h2>
-          </div>
-          <div className="robustnessAside">
-            <p>
-              We deliberately perturb brightness, contrast, and blur, then measure
-              whether the model keeps the same top class.
-            </p>
-            <button
-              className="outlineButton"
-              onClick={runStressTest}
-              disabled={!result || result.demo_mode || stressLoading}
-            >
-              {stressLoading ? "Applying perturbations…" : "Stress-test this image"}
-            </button>
-          </div>
-        </div>
-
-        {stress && !stress.demo_mode ? (
-          <div className="stressGrid">
-            <div className="stabilityCard">
-              <span>TOP-CLASS STABILITY</span>
-              <strong>{Math.round((stress.stability ?? 0) * 100)}%</strong>
-              <div className="stabilityMeter">
-                <div style={{ width: `${(stress.stability ?? 0) * 100}%` }} />
-              </div>
-              <p>Across five controlled image conditions.</p>
-            </div>
-            <div className="stressRows">
-              {stress.results.map((row, index) => {
-                const changed = row.top_class !== stress.original_class;
-                return (
-                  <div className="stressRow" key={row.variant}>
-                    <span className="stressIndex">0{index + 1}</span>
-                    <strong>{row.variant}</strong>
-                    <span className={changed ? "classChanged" : ""}>
-                      {labels[row.top_class] ?? row.top_class}
-                    </span>
-                    <span>{Math.round(row.confidence * 100)}%</span>
-                    <span className="stressState">{changed ? "FLIPPED" : "STABLE"}</span>
+                  <div className="stabilityMock">
+                    <span>Top-class stability</span>
+                    <strong>80%</strong>
                   </div>
-                );
-              })}
+                </div>
+              )}
+
+              {activeStory === 3 && (
+                <div className="evidenceMock">
+                  <div className="evidenceIntro">
+                    <span>Held-out evaluation</span>
+                    <h3>Only show what has been measured.</h3>
+                  </div>
+                  <div className="evidenceRows">
+                    <div><span>Lesion-level split</span><b>Implemented</b></div>
+                    <div><span>Class weighting</span><b>Implemented</b></div>
+                    <div><span>Calibration metrics</span><b>Implemented</b></div>
+                    <div><span>Final test results</span><b>Pending training</b></div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        ) : (
-          <div className="robustnessPlaceholder">
-            <div className="placeholderSignal">
-              <span /><span /><span /><span /><span />
-            </div>
-            <div>
-              <strong>Robustness remains invisible until you test it.</strong>
-              <p>Run a real analysis first, then stress-test the same image.</p>
-            </div>
-          </div>
-        )}
+        </div>
       </section>
 
-      <section className="researchSection" id="research">
-        <div className="researchIntro">
-          <p className="sectionIndex">04 / research</p>
-          <h2>Transparent by design.</h2>
+      <section className="sandboxSection" id="sandbox">
+        <div className="sectionIntro">
+          <span>Sandbox</span>
+          <h2>Try the research workflow yourself.</h2>
           <p>
-            No invented benchmarks. No mystery pipeline. Implementation claims and
-            measured performance stay separate until the held-out test evaluation exists.
+            Upload an image, inspect the model output, then stress-test the same image
+            against controlled changes in image conditions.
           </p>
         </div>
 
-        <div className="researchLayout">
-          <div className="researchChecklist">
-            <div className="researchCardHeader">
-              <span>PIPELINE STATUS</span>
-              <span>{research ? "SYNCED" : "CONNECTING"}</span>
+        <div className="sandboxWindow">
+          <div className="sandboxTopbar">
+            <div>
+              <span className="sandboxLogo">D</span>
+              <strong>DermaLens Sandbox</strong>
             </div>
-            {researchItems.map(([label, key], index) => (
-              <div className="checkRow" key={key}>
-                <span className="checkNumber">0{index + 1}</span>
-                <span>{label}</span>
-                <strong>{research?.implemented?.[key] ? "READY" : "—"}</strong>
-              </div>
-            ))}
+            <div className="healthPill">
+              <i className={research?.model_loaded ? "healthDot live" : apiOnline ? "healthDot api" : "healthDot"} />
+              {research?.model_loaded
+                ? "Model online"
+                : apiOnline
+                  ? "API online · weights pending"
+                  : "Local mode"}
+            </div>
           </div>
 
-          <div className="metricPanel">
-            <div className="researchCardHeader">
-              <span>HELD-OUT EVALUATION</span>
-              <span>{research?.evaluation_available ? "AVAILABLE" : "PENDING"}</span>
+          <div className="sandboxBody">
+            <div className="uploadColumn">
+              <div className="sandboxLabel">01 / Input</div>
+              <label
+                className={dragging ? "uploadDrop dragging" : "uploadDrop"}
+                onDragEnter={() => setDragging(true)}
+                onDragLeave={() => setDragging(false)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={onDrop}
+              >
+                {preview ? (
+                  <div className="sandboxPreview">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={preview} alt="Selected lesion preview" />
+                    <span>{file?.name}</span>
+                  </div>
+                ) : (
+                  <div className="uploadEmpty">
+                    <div className="uploadCircle">＋</div>
+                    <strong>Drop an image here</strong>
+                    <span>JPEG, PNG, WebP · up to 10 MB</span>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  aria-label="Choose a skin-lesion image for analysis"
+                  onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
+                />
+              </label>
+
+              <button
+                className="analyzeButton"
+                onClick={analyze}
+                disabled={!file || loading}
+              >
+                {loading ? "Running analysis…" : "Analyze image"}
+                <span>→</span>
+              </button>
+              {error && <p className="error">{error}</p>}
             </div>
 
-            {research?.evaluation_available && research.evaluation ? (
-              <div className="evaluationMetrics">
-                {[
-                  ["Accuracy", research.evaluation.accuracy],
-                  ["Balanced accuracy", research.evaluation.balanced_accuracy],
-                  ["Macro F1", research.evaluation.macro_f1],
-                  ["ROC-AUC", research.evaluation.macro_ovr_roc_auc],
-                ].map(([label, value]) => (
-                  <div key={String(label)}>
-                    <span>{label}</span>
-                    <strong>
-                      {typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "—"}
-                    </strong>
+            <div className="resultColumn">
+              <div className="sandboxLabel">02 / Output</div>
+
+              {!result ? (
+                <div className="resultEmpty">
+                  <div className="emptyHalo" />
+                  <strong>Model output will appear here.</strong>
+                  <span>
+                    The sandbox stays empty until you upload and analyze an image.
+                  </span>
+                </div>
+              ) : result.demo_mode ? (
+                <div className="demoResult">
+                  <span>Demo mode</span>
+                  <h3>The interface works. Trained weights are not loaded yet.</h3>
+                  <p>
+                    DermaLens intentionally does not fabricate a medical prediction.
+                  </p>
+                </div>
+              ) : (
+                <div className="liveResult">
+                  <div className="resultHeadline">
+                    <div>
+                      <span>Highest model score</span>
+                      <h3>{labels[result.top_class] ?? result.top_class}</h3>
+                    </div>
+                    <strong>{Math.round(result.confidence * 100)}%</strong>
+                  </div>
+
+                  <div className="resultStats">
+                    <div><span>Uncertainty</span><b>{Math.round(result.uncertainty * 100)}%</b></div>
+                    <div><span>Entropy</span><b>{Math.round(result.entropy * 100)}%</b></div>
+                  </div>
+
+                  <div className="probabilityRows">
+                    {sorted.map(([key, value]) => (
+                      <div className="probabilityRow" key={key}>
+                        <div><span>{labels[key] ?? key}</span><b>{(value * 100).toFixed(1)}%</b></div>
+                        <div className="probabilityTrack"><i style={{ width: `${value * 100}%` }} /></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {result && !result.demo_mode && (
+            <div className="sandboxBottom">
+              <div>
+                <span>03 / Robustness</span>
+                <strong>Does the answer survive a worse photo?</strong>
+              </div>
+              <button onClick={runStressTest} disabled={stressLoading}>
+                {stressLoading ? "Testing…" : "Run stress test"} →
+              </button>
+            </div>
+          )}
+
+          {stress && !stress.demo_mode && (
+            <div className="stressResults">
+              <div className="stabilityCard">
+                <span>Top-class stability</span>
+                <strong>{Math.round((stress.stability ?? 0) * 100)}%</strong>
+              </div>
+              <div className="stressRows">
+                {stress.results.map((row) => (
+                  <div className="stressRow" key={row.variant}>
+                    <span>{row.variant}</span>
+                    <span>{labels[row.top_class] ?? row.top_class}</span>
+                    <b>{Math.round(row.confidence * 100)}%</b>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="pendingMetrics">
-                <div className="pendingOrb" />
-                <div>
-                  <strong>No fake numbers.</strong>
-                  <p>
-                    Metrics unlock only after trained weights are evaluated on the
-                    untouched test split.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </section>
 
-      <section className="limitsSection" id="limits">
-        <p className="sectionIndex">05 / limits</p>
-        <div className="limitsHeadline">
-          <h2>Confidence is not certainty.</h2>
+      <section className="researchSection" id="research">
+        <div className="researchCopy">
+          <span>Research</span>
+          <h2>Designed to make uncertainty visible.</h2>
+        </div>
+
+        <div className="researchCards">
+          <article>
+            <span>01</span>
+            <h3>Lesion-level split</h3>
+            <p>
+              Images from the same lesion stay within one split, reducing leakage
+              between training and evaluation.
+            </p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Class-aware training</h3>
+            <p>
+              Weighted loss helps keep majority classes from dominating the learning
+              objective.
+            </p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Robustness checks</h3>
+            <p>
+              Controlled image perturbations expose sensitivity to lighting,
+              contrast, and blur.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section className="evidenceSection" id="evidence">
+        <div className="evidenceCopy">
+          <span>Evidence</span>
+          <h2>No performance claims until the test split says so.</h2>
           <p>
-            DermaLens is an educational research system—not a diagnostic device.
-            Image quality, dataset composition, skin-tone representation, hardware,
-            class imbalance, and distribution shift can all change model behavior.
+            The interface separates implemented methodology from measured results.
+            Held-out metrics appear only after real trained weights have been evaluated.
           </p>
         </div>
 
-        <div className="limitsTicker">
-          <span>DATASET SHIFT</span>
-          <span>IMAGE QUALITY</span>
-          <span>CLASS IMBALANCE</span>
-          <span>REPRESENTATION</span>
-          <span>DEVICE VARIATION</span>
-          <span>CALIBRATION</span>
+        <div className="statusPanel">
+          <div className="statusPanelTop">
+            <span>Evaluation status</span>
+            <strong>{research?.evaluation_available ? "Available" : "Pending training"}</strong>
+          </div>
+
+          {research?.evaluation_available && research.evaluation ? (
+            <div className="metricGrid">
+              {[
+                ["Accuracy", research.evaluation.accuracy],
+                ["Balanced accuracy", research.evaluation.balanced_accuracy],
+                ["Macro F1", research.evaluation.macro_f1],
+                ["ROC-AUC", research.evaluation.macro_ovr_roc_auc],
+              ].map(([label, value]) => (
+                <div key={String(label)}>
+                  <span>{label}</span>
+                  <strong>{typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "—"}</strong>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="pendingEvidence">
+              <div className="pendingOrb" />
+              <div>
+                <strong>Waiting for the real evaluation.</strong>
+                <p>
+                  No placeholder accuracy, no invented benchmark, no diagnostic claim.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
-      <section className="privacyBand" aria-label="Privacy and responsible use">
+      <section className="responsibility">
         <div>
-          <span className="sectionIndex">PRIVACY / RESPONSIBLE USE</span>
-          <strong>Your image is analyzed for this request, not presented as a diagnosis.</strong>
+          <span>Responsible use</span>
+          <h2>A model score is not a diagnosis.</h2>
         </div>
         <p>
-          DermaLens is designed as an educational research prototype. Uploaded image
-          payloads are not intentionally persisted by the application, and model
-          outputs should never replace evaluation by a qualified clinician.
+          DermaLens is an educational research prototype. Image quality, dataset
+          composition, skin-tone representation, hardware, and distribution shift can
+          all affect model behavior. Concerning lesions should be evaluated by a
+          qualified clinician.
         </p>
       </section>
 
       <footer>
-        <div>
-          <span className="brand footerBrand"><span className="brandMark" />DermaLens</span>
-          <p>Researching when image classifiers deserve trust.</p>
+        <div className="brand footerBrand">
+          <span className="brandIcon">D</span>
+          <span>DermaLens</span>
         </div>
         <div className="footerMeta">
           <span>Educational research prototype</span>
           <span>Not a medical device</span>
-          <span>© 2026</span>
+          <span>2026</span>
         </div>
       </footer>
     </main>
