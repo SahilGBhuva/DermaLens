@@ -7,7 +7,7 @@ from PIL import Image, UnidentifiedImageError
 
 from .model import DermaLensModel
 
-app = FastAPI(title="DermaLens API", version="0.3.0")
+app = FastAPI(title="DermaLens API", version="0.4.0")
 model = DermaLensModel()
 
 cors_origins = [
@@ -44,8 +44,7 @@ def health():
     }
 
 
-@app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def load_image(file: UploadFile) -> Image.Image:
     if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(status_code=400, detail="Upload a JPEG, PNG, or WebP image.")
 
@@ -56,8 +55,8 @@ async def predict(file: UploadFile = File(...)):
         raise HTTPException(status_code=413, detail="Image must be under 10 MB.")
 
     try:
-        image = Image.open(BytesIO(raw))
-        image.verify()
+        check = Image.open(BytesIO(raw))
+        check.verify()
         image = Image.open(BytesIO(raw)).convert("RGB")
     except (UnidentifiedImageError, OSError) as exc:
         raise HTTPException(status_code=400, detail="Invalid image file.") from exc
@@ -65,6 +64,12 @@ async def predict(file: UploadFile = File(...)):
     if image.width < 32 or image.height < 32:
         raise HTTPException(status_code=400, detail="Image is too small to analyze.")
 
+    return image
+
+
+@app.post("/predict")
+async def predict(file: UploadFile = File(...)):
+    image = await load_image(file)
     result = model.predict(image)
 
     return {
@@ -80,3 +85,9 @@ async def predict(file: UploadFile = File(...)):
             "A clinician should evaluate any concerning lesion."
         ),
     }
+
+
+@app.post("/stress-test")
+async def stress_test(file: UploadFile = File(...)):
+    image = await load_image(file)
+    return model.stress_test(image)
