@@ -389,3 +389,101 @@ footer {
     font-size: 11px;
   }
 }
+
+
+.researchSection {
+  margin: 90px 0 0;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+}
+
+.researchHeading {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 70px;
+  align-items: end;
+}
+
+.researchHeading h2 {
+  margin: 18px 0 0;
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.researchGrid {
+  margin-top: 38px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.researchChecklist,
+.metricPanel {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--panel);
+  padding: 22px;
+}
+
+.checkRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.checkRow:last-child {
+  border-bottom: 0;
+}
+
+.checkRow span,
+.metricPanel span,
+.researchPending {
+  color: var(--soft);
+  font-size: 13px;
+}
+
+.metricPanelTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.evaluationMetrics {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.evaluationMetrics div {
+  min-height: 110px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.evaluationMetrics strong {
+  font-size: 30px;
+  letter-spacing: -0.045em;
+}
+
+.researchPending {
+  margin: 46px 0;
+  max-width: 430px;
+  line-height: 1.6;
+}
+
+@media (max-width: 820px) {
+  .researchHeading,
+  .researchGrid {
+    grid-template-columns: 1fr;
+  }
+}
