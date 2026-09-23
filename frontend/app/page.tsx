@@ -167,9 +167,6 @@ export default function Home() {
 
   return (
     <main>
-      <div className="ambient ambientOne" />
-      <div className="ambient ambientTwo" />
-
       <nav className="siteNav">
         <a className="brand" href="#top" aria-label="DermaLens home">
           <span className="brandMark" />
@@ -203,22 +200,20 @@ export default function Home() {
       <section className="hero" id="top">
         <div className="heroCopy">
           <div className="heroEyebrow">
-            <span>Explainable medical-image intelligence</span>
-            <span>Research prototype / 2026</span>
+            <span>Explainable medical-image research</span>
+            <span>DermaLens / 2026</span>
           </div>
 
           <h1>
-            Don&apos;t just trust
-            <span className="ghostWord"> the answer.</span>
+            Understand the prediction.
             <br />
-            <em>Interrogate it.</em>
+            <em>See what changes it.</em>
           </h1>
 
           <div className="heroBottom">
             <p>
-              DermaLens turns a skin-lesion prediction into something you can inspect:
-              probability, uncertainty, model attention, and whether the answer survives
-              changes to the image.
+              DermaLens makes image-classification behavior easier to inspect through
+              probability, uncertainty, attention, and robustness.
             </p>
 
             <div className="heroActions">
@@ -228,53 +223,34 @@ export default function Home() {
                   document.getElementById("analyze")?.scrollIntoView({ behavior: "smooth" })
                 }
               >
-                Enter the model
+                Try DermaLens
                 <span>↘</span>
               </button>
               <a className="textCta" href="#research">
-                View methodology <span>→</span>
+                How it works <span>→</span>
               </a>
             </div>
           </div>
         </div>
 
         <div className="heroVisual" aria-hidden="true">
-          <div className="visualGrid" />
-          <div className="halo haloA" />
-          <div className="halo haloB" />
-          <div className="halo haloC" />
-          <div className="coreSphere">
-            <div className="sphereNoise" />
-            <div className="scanBand" />
+          <div className="softShape softShapeOne" />
+          <div className="softShape softShapeTwo" />
+          <div className="softCore" />
+          <div className="heroVisualCaption">
+            <span>Prediction</span>
+            <span>Attention</span>
+            <span>Robustness</span>
           </div>
-          <div className="orbit orbitOne"><span /></div>
-          <div className="orbit orbitTwo"><span /></div>
-          <div className="visualLabel labelOne">LATENT / 07</div>
-          <div className="visualLabel labelTwo">UNCERTAINTY FIELD</div>
-          <div className="visualLabel labelThree">X 0.384 &nbsp; Y 0.617</div>
-        </div>
-      </section>
-
-      <section className="marquee" aria-label="DermaLens capabilities">
-        <div>
-          <span>Explainability</span><i>◆</i>
-          <span>Robustness</span><i>◆</i>
-          <span>Calibration</span><i>◆</i>
-          <span>Transparency</span><i>◆</i>
-          <span>Failure analysis</span><i>◆</i>
-          <span>Explainability</span><i>◆</i>
-          <span>Robustness</span><i>◆</i>
-          <span>Calibration</span><i>◆</i>
         </div>
       </section>
 
       <section className="statementSection">
         <p className="sectionIndex">00 / premise</p>
         <div className="statement">
-          <p className="statementLead">A prediction is easy.</p>
+          <p className="statementLead">A score is only the beginning.</p>
           <p>
-            Knowing <em>when it becomes fragile</em> is harder. DermaLens is built
-            around that gap.
+            DermaLens helps you see <em>how a model behaves</em>, not just what it predicts.
           </p>
         </div>
       </section>
@@ -282,12 +258,12 @@ export default function Home() {
       <section className="analysisSection" id="analyze">
         <div className="sectionTopline">
           <div>
-            <p className="sectionIndex">01 / analysis chamber</p>
-            <h2>Put an image under pressure.</h2>
+            <p className="sectionIndex">01 / analysis</p>
+            <h2>Analyze an image.</h2>
           </div>
           <p>
-            One image. Seven classes. Multiple ways to inspect what the network is
-            actually doing.
+            Upload one image and inspect its class probabilities, uncertainty,
+            attention, and stability.
           </p>
         </div>
 
@@ -444,8 +420,8 @@ export default function Home() {
       <section className="robustnessSection">
         <div className="robustnessHeader">
           <div>
-            <p className="sectionIndex">03 / robustness lab</p>
-            <h2>What if the image changes, but the lesion doesn&apos;t?</h2>
+            <p className="sectionIndex">03 / robustness</p>
+            <h2>Does the prediction stay consistent?</h2>
           </div>
           <div className="robustnessAside">
             <p>
@@ -504,8 +480,8 @@ export default function Home() {
 
       <section className="researchSection" id="research">
         <div className="researchIntro">
-          <p className="sectionIndex">04 / evidence layer</p>
-          <h2>Built to show the receipts.</h2>
+          <p className="sectionIndex">04 / research</p>
+          <h2>Transparent by design.</h2>
           <p>
             No invented benchmarks. No mystery pipeline. Implementation claims and
             measured performance stay separate until the held-out test evaluation exists.
