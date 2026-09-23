@@ -2303,3 +2303,24 @@ button.roundPill {
     margin-right: auto;
   }
 }
+
+
+.storyProgressMeta {
+  margin-top: 32px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  color: #7a8da7;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .11em;
+}
+
+.storyProgressMeta span:first-child {
+  color: #4f6f99;
+  font-weight: 750;
+}
+
+.storyDots {
+  margin-top: 10px;
+}
