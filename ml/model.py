@@ -12,3 +12,12 @@ def build_model(pretrained: bool = True):
         len(CLASSES),
     )
     return model
+
+
+def pick_device() -> torch.device:
+    """Prefer CUDA, then Apple Silicon (MPS), then CPU."""
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")

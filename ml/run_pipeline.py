@@ -67,6 +67,8 @@ def main():
             str(args.batch_size),
             "--output",
             args.weights,
+            "--history",
+            str(Path(args.weights).parent / "training_history.json"),
         ]
     )
 

@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from dataset import SkinLesionDataset
-from model import CLASSES, build_model
+from model import CLASSES, build_model, pick_device
 
 
 def make_transforms(train: bool):
@@ -69,7 +69,8 @@ def main():
         y=labels,
     )
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = pick_device()
+    print(f"training on {device}", flush=True)
     model = build_model(pretrained=True).to(device)
 
     criterion = nn.CrossEntropyLoss(

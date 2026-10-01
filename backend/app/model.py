@@ -28,7 +28,7 @@ class Prediction:
 
 class DermaLensModel:
     def __init__(self) -> None:
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = self._pick_device()
         self.transform = transforms.Compose(
             [
                 transforms.Resize((224, 224)),
@@ -47,6 +47,14 @@ class DermaLensModel:
             self.model.load_state_dict(state)
             self.model.eval()
             self.demo_mode = False
+
+    @staticmethod
+    def _pick_device() -> torch.device:
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        if torch.backends.mps.is_available():
+            return torch.device("mps")
+        return torch.device("cpu")
 
     def _build_model(self):
         model = models.efficientnet_b0(weights=None)

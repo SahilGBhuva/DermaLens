@@ -9,7 +9,7 @@ from torchvision import transforms
 
 from dataset import SkinLesionDataset
 from metrics import summarize_metrics
-from model import CLASSES, build_model
+from model import CLASSES, build_model, pick_device
 
 
 def main():
@@ -35,7 +35,7 @@ def main():
     ds = SkinLesionDataset(args.csv, class_to_idx, tf)
     loader = DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = pick_device()
     model = build_model(pretrained=False).to(device)
     model.load_state_dict(torch.load(args.weights, map_location=device))
     model.eval()
@@ -60,7 +60,8 @@ def main():
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(metrics, indent=2))
+    # allow_nan=False fails loudly here rather than writing JSON the API can't serve.
+    output.write_text(json.dumps(metrics, indent=2, allow_nan=False))
     print(json.dumps(metrics, indent=2))
 
 

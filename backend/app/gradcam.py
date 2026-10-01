@@ -47,19 +47,45 @@ class GradCAM:
         self._backward_handle.remove()
 
 
-def overlay_heatmap(image: Image.Image, heatmap: np.ndarray) -> str:
-    image = image.convert("RGB").resize((224, 224))
-    heat = Image.fromarray(np.uint8(np.clip(heatmap, 0, 1) * 255)).resize((224, 224))
+# Matches the attention legend on the DermaLens site: low → high contribution.
+HEAT_STOPS = np.array([0.0, 0.3, 0.55, 0.8, 1.0], dtype=np.float32)
+HEAT_COLORS = (
+    np.array(
+        [
+            [0x24, 0x62, 0xE0],  # blue
+            [0x37, 0xB6, 0xFF],  # cyan
+            [0xFF, 0xE4, 0x5C],  # yellow
+            [0xFF, 0x9F, 0x1A],  # orange
+            [0xFF, 0x3B, 0x2F],  # red
+        ],
+        dtype=np.float32,
+    )
+    / 255.0
+)
+OVERLAY_SIZE = 448
+
+
+def colorize(heat: np.ndarray) -> np.ndarray:
+    """Map a [0, 1] heatmap to RGB with the DermaLens attention scale."""
+    heat = np.clip(heat, 0.0, 1.0)
+    return np.stack(
+        [np.interp(heat, HEAT_STOPS, HEAT_COLORS[:, channel]) for channel in range(3)],
+        axis=-1,
+    ).astype(np.float32)
+
+
+def overlay_heatmap(image: Image.Image, heatmap: np.ndarray, size: int = OVERLAY_SIZE) -> str:
+    image = image.convert("RGB").resize((size, size), Image.Resampling.LANCZOS)
+    heat = Image.fromarray(np.uint8(np.clip(heatmap, 0, 1) * 255)).resize(
+        (size, size), Image.Resampling.BICUBIC
+    )
     heat_np = np.asarray(heat, dtype=np.float32) / 255.0
 
-    # Simple red/yellow heatmap without an extra plotting dependency.
-    color = np.zeros((224, 224, 3), dtype=np.float32)
-    color[..., 0] = np.clip(heat_np * 1.6, 0, 1)
-    color[..., 1] = np.clip((heat_np - 0.25) * 1.3, 0, 1)
-
+    # Low-attention areas keep a light blue tint so the scale reads end to end;
+    # high-attention areas are mostly heat color.
+    alpha = (0.18 + 0.5 * heat_np)[..., None]
     base = np.asarray(image, dtype=np.float32) / 255.0
-    alpha = (heat_np[..., None] * 0.55)
-    blended = base * (1 - alpha) + color * alpha
+    blended = base * (1 - alpha) + colorize(heat_np) * alpha
     blended = np.uint8(np.clip(blended, 0, 1) * 255)
 
     output = Image.fromarray(blended)

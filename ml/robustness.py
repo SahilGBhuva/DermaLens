@@ -7,7 +7,7 @@ import torch
 from PIL import Image, ImageEnhance, ImageFilter
 from torchvision import transforms
 
-from model import CLASSES, build_model
+from model import CLASSES, build_model, pick_device
 
 TF = transforms.Compose(
     [
@@ -38,7 +38,7 @@ def main():
     parser.add_argument("--output", default="models/robustness.json")
     args = parser.parse_args()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = pick_device()
     model = build_model(pretrained=False).to(device)
     model.load_state_dict(torch.load(args.weights, map_location=device))
     model.eval()

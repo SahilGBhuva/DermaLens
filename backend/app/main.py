@@ -71,6 +71,30 @@ async def load_image(file: UploadFile) -> Image.Image:
     return image
 
 
+def per_class_summary(raw: dict):
+    """Sensitivity, specificity and support per class, from evaluation.json."""
+    rates = raw.get("per_class_sensitivity_specificity") or {}
+    report = raw.get("classification_report") or {}
+    rows = []
+    for label, values in rates.items():
+        rows.append(
+            {
+                "label": label,
+                "sensitivity": values.get("sensitivity"),
+                "specificity": values.get("specificity"),
+                "support": int((report.get(label) or {}).get("support") or 0),
+            }
+        )
+    return rows
+
+
+def test_image_count(raw: dict):
+    matrix = raw.get("confusion_matrix")
+    if not matrix:
+        return None
+    return int(sum(sum(row) for row in matrix))
+
+
 @app.get("/research-status")
 def research_status():
     evaluation = None
@@ -85,6 +109,8 @@ def research_status():
                 "macro_ovr_roc_auc": raw.get("macro_ovr_roc_auc"),
                 "expected_calibration_error": raw.get("expected_calibration_error"),
                 "multiclass_brier_score": raw.get("multiclass_brier_score"),
+                "per_class": per_class_summary(raw),
+                "test_images": test_image_count(raw),
             }
         except (OSError, json.JSONDecodeError):
             evaluation = None
