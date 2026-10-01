@@ -6,7 +6,8 @@ DermaLens is an educational/research web app for experimenting with machine-lear
 
 ## What is implemented
 
-- Next.js image-upload interface
+- Next.js site with an interactive scope hero, a four-step "how it works" walkthrough, a 3D "attention landscape" (three.js, loaded only when scrolled into view), a robustness lab, and an evidence page that only shows real held-out metrics, including per-class sensitivity once an evaluation exists
+- sandbox wired to the API: upload an image (or a clearly labelled synthetic sample), read all seven probabilities, toggle the Grad-CAM overlay, and run the stress test
 - FastAPI + PyTorch inference API
 - EfficientNet-B0 transfer-learning pipeline
 - HAM10000 metadata preparation
@@ -14,7 +15,8 @@ DermaLens is an educational/research web app for experimenting with machine-lear
 - class-weighted training for class imbalance
 - evaluation with accuracy, balanced accuracy, macro/weighted F1, confusion matrix, classification report and multiclass ROC-AUC
 - normalized predictive entropy
-- Grad-CAM attention heatmap returned by the API and shown in the UI
+- Grad-CAM attention heatmap returned by the API and shown in the UI, colored with the same blue → red scale as the site legend
+- automatic device selection for training and inference: CUDA, then Apple Silicon (MPS), then CPU
 - demo mode when trained weights are absent
 
 ## Project structure
@@ -46,9 +48,17 @@ data/
 
 ## 2. Prepare lesion-level splits
 
-```bash
-python -m pip install -r ml/requirements.txt
+One virtual environment at the repository root covers training, evaluation and the API:
 
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r ml/requirements.txt -r backend/requirements.txt
+```
+
+Then build the splits:
+
+```bash
 python ml/prepare_ham10000.py \
   --metadata data/raw/HAM10000_metadata.csv \
   --images-dir data/raw/images \
@@ -75,7 +85,13 @@ python ml/train.py \
   --output models/dermalens_efficientnet_b0.pt
 ```
 
-The training code uses ImageNet-pretrained EfficientNet-B0, augmentation, AdamW, cosine learning-rate scheduling, and class-weighted cross-entropy.
+The first run downloads the ImageNet EfficientNet-B0 starting weights (about 20 MB) from `download.pytorch.org`. With the python.org installer on macOS this can fail with `CERTIFICATE_VERIFY_FAILED`, because that Python ships without root certificates. Use the certificates bundled in the environment:
+
+```bash
+export SSL_CERT_FILE=$(python -m certifi)
+```
+
+The training code uses ImageNet-pretrained EfficientNet-B0, augmentation, AdamW, cosine learning-rate scheduling, and class-weighted cross-entropy. It trains on CUDA when available, otherwise on the Apple Silicon GPU (MPS), otherwise on the CPU.
 
 ## 4. Evaluate on the held-out test set
 
@@ -90,12 +106,17 @@ Do not use the test set to tune the model. Keep it for final evaluation.
 
 ## 5. Run the API
 
+With the root `.venv` active:
+
 ```bash
 cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
+```
+
+The API only accepts browser requests from origins listed in `CORS_ORIGINS` (default `http://localhost:3000`). If the frontend runs on another port, list it:
+
+```bash
+CORS_ORIGINS=http://localhost:3000,http://localhost:3100 uvicorn app.main:app --reload --port 8000
 ```
 
 The backend looks for:
@@ -131,7 +152,7 @@ The API returns:
 - max-probability confidence
 - `1 - max probability` uncertainty proxy
 - normalized predictive entropy
-- Grad-CAM attention heatmap
+- Grad-CAM attention heatmap: a 448 × 448 PNG overlay using the site's attention scale (blue = low contribution, red = high)
 - explicit research-use disclaimer
 
 The uncertainty values are model-output summaries, not calibrated probabilities of clinical correctness.
@@ -160,6 +181,15 @@ This positions DermaLens as an explainable medical-ML research tool rather than 
 ## Quality checks
 
 GitHub Actions builds the Next.js frontend and runs backend API tests on pushes and pull requests.
+
+Run the backend tests locally:
+
+```bash
+cd backend
+python -m pytest -q
+```
+
+`tests/test_inference.py` exercises the loaded-model path (probabilities, Grad-CAM overlay, stress test) with a randomly initialised network, so it checks mechanics without needing trained weights.
 
 To verify dataset splits locally:
 

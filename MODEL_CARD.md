@@ -51,6 +51,14 @@ Performance can change with:
 
 Grad-CAM indicates model attention, not medical causality or clinical correctness.
 
+## Explainability output
+
+Grad-CAM is computed on the final convolutional block for the highest-scoring class. The API returns it as a 448 × 448 overlay colored from blue (low contribution) through cyan and yellow to red (high contribution), matching the legend in the web interface.
+
+## Illustrative content in the interface
+
+The hero, the "how it works" walkthrough, the 3D attention landscape and the robustness lab use a synthetic, hand-drawn lesion and fixed example numbers so the site can explain itself without patient images. They are labelled "illustrative" or "simulated" and are not model output. Only the sandbox and the evidence section show real API results.
+
 ## Current status
 
 No performance claims should be made until trained weights and a held-out evaluation are produced.

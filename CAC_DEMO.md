@@ -26,7 +26,7 @@ Introduce DermaLens as a tool for making those failure modes visible.
 
 ### 1:05–1:50 — Robustness Lab
 
-1. Run the built-in stress test.
+1. Run the built-in stress test from the sandbox. (The separate "Robustness lab" section on the page uses simulated numbers to explain the idea — use it for the explanation, not as evidence.)
 2. Explain that DermaLens creates controlled darker, brighter, lower-contrast, and blurred versions.
 3. Show whether the top class remains stable.
 4. If a class changes, highlight that this is exactly the kind of model weakness the app is meant to expose.
