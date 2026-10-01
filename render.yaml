@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: dermalens-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      # Your Vercel site address, e.g. https://dermalens.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+      # Direct download links to the trained files (e.g. GitHub Release assets)
+      - key: MODEL_URL
+        sync: false
+      - key: EVALUATION_URL
+        sync: false

@@ -7,12 +7,18 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, UnidentifiedImageError
 
-from .model import DermaLensModel
+from .model import MODEL_PATH, DermaLensModel
+from .weights import ensure_file
 
-app = FastAPI(title="DermaLens API", version="0.5.0")
-model = DermaLensModel()
 ROOT_DIR = Path(__file__).resolve().parents[2]
 EVALUATION_PATH = ROOT_DIR / "models" / "evaluation.json"
+
+# In the cloud, fetch hosted weights/evaluation before the model loads.
+ensure_file(MODEL_PATH, "MODEL_URL", "MODEL_SHA256")
+ensure_file(EVALUATION_PATH, "EVALUATION_URL")
+
+app = FastAPI(title="DermaLens API", version="0.6.0")
+model = DermaLensModel()
 
 cors_origins = [
     origin.strip()

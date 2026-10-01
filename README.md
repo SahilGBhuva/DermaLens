@@ -216,6 +216,8 @@ This compares model output after brightness, contrast, and blur perturbations.
 
 ## Deployment
 
+Step-by-step cloud setup (Colab training, GitHub Release for weights, Render API, Vercel site) is in [`DEPLOY.md`](DEPLOY.md). To train without downloading the dataset locally, use [`ml/train_in_colab.ipynb`](ml/train_in_colab.ipynb).
+
 ### Frontend
 
 The `frontend/` folder is Vercel-ready.
