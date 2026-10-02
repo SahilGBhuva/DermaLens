@@ -15,7 +15,7 @@ def main():
     )
     parser.add_argument("--metadata", required=True)
     parser.add_argument("--images-dir", required=True)
-    parser.add_argument("--epochs", type=int, default=12)
+    parser.add_argument("--epochs", type=int, default=25)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--splits-dir", default="data/splits")
     parser.add_argument("--weights", default="models/dermalens_efficientnet_b0.pt")

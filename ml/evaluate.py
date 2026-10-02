@@ -9,7 +9,7 @@ from torchvision import transforms
 
 from dataset import SkinLesionDataset
 from metrics import summarize_metrics
-from model import CLASSES, build_model, pick_device
+from model import CLASSES, build_model, pick_device, predict_proba_tta
 
 
 def main():
@@ -46,8 +46,9 @@ def main():
     with torch.inference_mode():
         for images, labels in loader:
             images = images.to(device)
-            logits = model(images)
-            probs = torch.softmax(logits, dim=1)
+            # Same four flipped views the API averages, so these scores
+            # describe what the live site actually serves.
+            probs = predict_proba_tta(model, images)
 
             all_y.extend(labels.numpy().tolist())
             all_probs.append(probs.cpu().numpy())

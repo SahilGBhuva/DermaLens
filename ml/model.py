@@ -21,3 +21,14 @@ def pick_device() -> torch.device:
     if torch.backends.mps.is_available():
         return torch.device("mps")
     return torch.device("cpu")
+
+
+def predict_proba_tta(model, x: torch.Tensor) -> torch.Tensor:
+    """Average softmax over the image and its horizontal/vertical flips.
+
+    Dermoscopy has no canonical orientation, so the flipped views are equally
+    valid inputs; averaging them gives steadier probabilities. The API uses the
+    same four views, so held-out scores match what the live site serves.
+    """
+    views = [x, x.flip(-1), x.flip(-2), x.flip(-1).flip(-2)]
+    return torch.stack([torch.softmax(model(v), dim=1) for v in views]).mean(0)

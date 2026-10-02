@@ -64,8 +64,10 @@ class DermaLensModel:
     def _predict_summary(self, image: Image.Image):
         x = self.transform(image.convert("RGB")).unsqueeze(0).to(self.device)
         with torch.inference_mode():
-            logits = self.model(x)
-            p = torch.softmax(logits, dim=1)[0]
+            # Average the image and its flips, exactly as ml/evaluate.py does,
+            # so live probabilities match the published held-out scores.
+            views = [x, x.flip(-1), x.flip(-2), x.flip(-1).flip(-2)]
+            p = torch.stack([torch.softmax(self.model(v), dim=1) for v in views]).mean(0)[0]
 
         top_idx = int(torch.argmax(p).item())
         confidence = float(p[top_idx].item())
