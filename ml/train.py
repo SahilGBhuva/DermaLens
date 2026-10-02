@@ -9,26 +9,38 @@ import torch
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.utils.class_weight import compute_class_weight
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.nn import functional as F
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import transforms
 
 from dataset import SkinLesionDataset
-from model import CLASSES, build_model, pick_device, predict_proba_tta
+from model import CLASSES, IMAGE_SIZE, MEAN, STD, build_model, eval_transform, pick_device, predict_proba_tta
 
-IMAGE_SIZE = 224
-MEAN = [0.485, 0.456, 0.406]
-STD = [0.229, 0.224, 0.225]
+
+class FocalLoss(nn.Module):
+    """Cross-entropy that down-weights easy examples (Lin et al., 2017).
+
+    `alpha` holds optional per-class weights; gamma=0 reduces to weighted CE.
+    """
+
+    def __init__(self, alpha=None, gamma: float = 2.0, label_smoothing: float = 0.0):
+        super().__init__()
+        self.register_buffer("alpha", alpha if alpha is not None else None)
+        self.gamma = gamma
+        self.label_smoothing = label_smoothing
+
+    def forward(self, logits, target):
+        ce = F.cross_entropy(logits, target, reduction="none", label_smoothing=self.label_smoothing)
+        p_true = torch.softmax(logits, dim=1).gather(1, target[:, None]).squeeze(1)
+        loss = (1 - p_true) ** self.gamma * ce
+        if self.alpha is not None:
+            loss = loss * self.alpha[target]
+        return loss.mean()
 
 
 def make_transforms(train: bool):
     if not train:
-        return transforms.Compose(
-            [
-                transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-                transforms.ToTensor(),
-                transforms.Normalize(MEAN, STD),
-            ]
-        )
+        return eval_transform(IMAGE_SIZE)
 
     # Dermoscopy has no fixed orientation, and capture conditions vary, so the
     # training images are varied in framing, rotation, flips and lighting. The
@@ -75,6 +87,13 @@ def main():
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--label-smoothing", type=float, default=0.1)
+    parser.add_argument("--loss", choices=["ce", "focal"], default="ce")
+    parser.add_argument(
+        "--sampler",
+        choices=["none", "balanced"],
+        default="none",
+        help="balanced: draw each class equally often (class weights are then not applied to the loss)",
+    )
     parser.add_argument("--output", default="models/dermalens_efficientnet_b0.pt")
     parser.add_argument("--history", default="models/training_history.json")
     args = parser.parse_args()
@@ -90,22 +109,33 @@ def main():
     device = pick_device()
     print(f"training on {device}", flush=True)
     workers = 4 if device.type == "cuda" else 2
-    train_loader = DataLoader(
-        train_ds, batch_size=args.batch_size, shuffle=True, num_workers=workers,
-        pin_memory=device.type == "cuda", drop_last=len(train_ds) > args.batch_size,
-    )
-    val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=workers)
-
     labels = pd.read_csv(args.train_csv)["label"].map(class_to_idx).to_numpy()
     present = np.unique(labels)
     weights = np.ones(len(CLASSES))
     weights[present] = compute_class_weight(class_weight="balanced", classes=present, y=labels)
 
-    model = build_model(pretrained=True).to(device)
-    criterion = nn.CrossEntropyLoss(
-        weight=torch.tensor(weights, dtype=torch.float32, device=device),
-        label_smoothing=args.label_smoothing,
+    # Correct the class imbalance once: either by sampling or by loss weights.
+    sampler = None
+    if args.sampler == "balanced":
+        sampler = WeightedRandomSampler(
+            torch.tensor(weights[labels], dtype=torch.double), num_samples=len(labels), replacement=True
+        )
+        weights = np.ones(len(CLASSES))
+
+    train_loader = DataLoader(
+        train_ds, batch_size=args.batch_size, shuffle=sampler is None, sampler=sampler,
+        num_workers=workers, pin_memory=device.type == "cuda",
+        drop_last=len(train_ds) > args.batch_size,
     )
+    val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=workers)
+
+    model = build_model(pretrained=True).to(device)
+    class_weights = torch.tensor(weights, dtype=torch.float32, device=device)
+    if args.loss == "focal":
+        criterion = FocalLoss(class_weights, gamma=2.0, label_smoothing=args.label_smoothing).to(device)
+    else:
+        criterion = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=args.label_smoothing)
+    print(f"loss={args.loss} sampler={args.sampler}", flush=True)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     # One warm-up epoch, then cosine decay over the rest.
     scheduler = torch.optim.lr_scheduler.SequentialLR(

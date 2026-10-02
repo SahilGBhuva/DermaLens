@@ -19,3 +19,6 @@ data/
 .env
 .env.local
 .DS_Store
+
+# Trained-model metadata travels with the weights (GitHub Release), not git
+models/*.json

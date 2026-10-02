@@ -5,20 +5,9 @@ from pathlib import Path
 import numpy as np
 import torch
 from PIL import Image, ImageEnhance, ImageFilter
-from torchvision import transforms
+from model import CLASSES, build_model, eval_transform, pick_device
 
-from model import CLASSES, build_model, pick_device
-
-TF = transforms.Compose(
-    [
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(
-            [0.485, 0.456, 0.406],
-            [0.229, 0.224, 0.225],
-        ),
-    ]
-)
+TF = eval_transform()
 
 
 def perturbations(image):

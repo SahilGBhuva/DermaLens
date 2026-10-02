@@ -106,6 +106,10 @@ def test_research_status_serves_real_evaluation(tmp_path, monkeypatch):
         )
     )
     monkeypatch.setattr(main, "EVALUATION_PATH", evaluation)
+    # Metrics are only published alongside a loaded model they belong to.
+    monkeypatch.setattr(main.model, "demo_mode", False)
+    monkeypatch.setattr(main.model, "config", {**main.model.config, "evaluation_sha256": None})
+    monkeypatch.setattr(main.model, "weights_sha256", "abc", raising=False)
 
     response = client.get("/research-status")
     assert response.status_code == 200

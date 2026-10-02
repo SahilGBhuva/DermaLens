@@ -1073,6 +1073,25 @@ h1 em, h2 em, h3 em { color: var(--blue); }
 .viewToggle button.active { background: var(--ink); color: #fff; }
 .viewToggle button:disabled { opacity: .45; }
 
+.trustPanel {
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: #fbf7ee;
+  border: 1px solid #ecdcb8;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #4a3d22;
+}
+.trustPanel p { margin: 0; }
+.trustHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.trustHead .stepLabel { color: #7a5a14; }
+.trustHead b { font-size: 14px; color: #2f2510; }
+.trustFlag { font-weight: 600; color: #7a4a00; }
+.trustStrong { font-weight: 600; color: #2f2510; }
+
 .probabilityRows { display: flex; flex-direction: column; gap: 12px; }
 .sandboxWindow .probRow > div:first-child { color: var(--muted); }
 .sandboxWindow .probRow.top > div:first-child { color: var(--ink); }
@@ -1273,6 +1292,8 @@ h1 em, h2 em, h3 em { color: var(--blue); }
   color: var(--muted);
 }
 .evalMeta b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+
+.evalCaveat { margin: 0; font-size: 13px; line-height: 1.55; color: var(--subtle); }
 
 .perClass { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .perClassHead,

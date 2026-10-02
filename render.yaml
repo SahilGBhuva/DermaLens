@@ -13,5 +13,7 @@ services:
       # Direct download links to the trained files (e.g. GitHub Release assets)
       - key: MODEL_URL
         sync: false
+      - key: CONFIG_URL
+        sync: false
       - key: EVALUATION_URL
         sync: false

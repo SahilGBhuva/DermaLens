@@ -35,3 +35,5 @@ jobs:
       - run: pip install -r requirements-ci.txt
       - run: pip install torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cpu
       - run: python -m pytest tests -q
+      - run: pip install pandas==2.3.2 scikit-learn==1.7.1
+      - run: python -m pytest ../ml/tests -q

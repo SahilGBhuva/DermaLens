@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import logging
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,7 +15,35 @@ from torchvision import models, transforms
 from .gradcam import GradCAM, overlay_heatmap
 
 CLASSES = ["akiec", "bcc", "bkl", "df", "mel", "nv", "vasc"]
-MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "dermalens_efficientnet_b0.pt"
+MODELS_DIR = Path(__file__).resolve().parents[2] / "models"
+MODEL_PATH = MODELS_DIR / "dermalens_efficientnet_b0.pt"
+CONFIG_PATH = MODELS_DIR / "model_config.json"
+
+log = logging.getLogger("dermalens.model")
+
+# Mirrors ml/model.py default_config(): a plain, uncalibrated, single-view model.
+DEFAULT_CONFIG = {
+    "classes": CLASSES,
+    "image_size": 224,
+    "mean": [0.485, 0.456, 0.406],
+    "std": [0.229, 0.224, 0.225],
+    "tta": False,
+    "temperature": 1.0,
+    "logit_bias": [0.0] * len(CLASSES),
+}
+
+
+def load_config(path: Path = CONFIG_PATH) -> dict:
+    config = dict(DEFAULT_CONFIG)
+    if path.exists():
+        config.update(json.loads(path.read_text()))
+    if config["classes"] != CLASSES:
+        raise ValueError(f"model_config.json classes {config['classes']} do not match {CLASSES}")
+    return config
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 @dataclass
@@ -27,26 +58,35 @@ class Prediction:
 
 
 class DermaLensModel:
-    def __init__(self) -> None:
+    def __init__(self, model_path: Path = MODEL_PATH, config_path: Path = CONFIG_PATH) -> None:
         self.device = self._pick_device()
+        self.config = load_config(config_path)
+        # Must match ml/model.py eval_transform(): what validation/test used.
         self.transform = transforms.Compose(
             [
-                transforms.Resize((224, 224)),
+                transforms.Resize((self.config["image_size"], self.config["image_size"])),
                 transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225],
-                ),
+                transforms.Normalize(mean=self.config["mean"], std=self.config["std"]),
             ]
         )
         self.model = self._build_model()
         self.demo_mode = True
+        self.status = "no trained weights found"
 
-        if MODEL_PATH.exists():
-            state = torch.load(MODEL_PATH, map_location=self.device)
+        if model_path.exists():
+            expected = self.config.get("weights_sha256")
+            actual = sha256(model_path)
+            if expected and expected != actual:
+                # Never serve predictions from weights the settings weren't made for.
+                self.status = "weights failed the integrity check"
+                log.error("Refusing %s: sha256 %s, expected %s", model_path.name, actual, expected)
+                return
+            state = torch.load(model_path, map_location=self.device, weights_only=True)
             self.model.load_state_dict(state)
             self.model.eval()
             self.demo_mode = False
+            self.status = "loaded"
+            self.weights_sha256 = actual
 
     @staticmethod
     def _pick_device() -> torch.device:
@@ -64,10 +104,7 @@ class DermaLensModel:
     def _predict_summary(self, image: Image.Image):
         x = self.transform(image.convert("RGB")).unsqueeze(0).to(self.device)
         with torch.inference_mode():
-            # Average the image and its flips, exactly as ml/evaluate.py does,
-            # so live probabilities match the published held-out scores.
-            views = [x, x.flip(-1), x.flip(-2), x.flip(-1).flip(-2)]
-            p = torch.stack([torch.softmax(self.model(v), dim=1) for v in views]).mean(0)[0]
+            p = self._probabilities(x)[0]
 
         top_idx = int(torch.argmax(p).item())
         confidence = float(p[top_idx].item())
@@ -84,6 +121,26 @@ class DermaLensModel:
             "confidence": confidence,
             "uncertainty": uncertainty,
             "entropy": entropy,
+        }
+
+    def _probabilities(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply the same settings ml/evaluate.py used for the published scores."""
+        if self.config["tta"]:
+            views = [x, x.flip(-1), x.flip(-2), x.flip(-1).flip(-2)]
+            p = torch.stack([torch.softmax(self.model(v), dim=1) for v in views]).mean(0)
+        else:
+            p = torch.softmax(self.model(x), dim=1)
+        bias = torch.as_tensor(self.config["logit_bias"], dtype=p.dtype, device=p.device)
+        return torch.softmax(torch.log(p.clamp_min(1e-12)) / self.config["temperature"] + bias, dim=1)
+
+    def info(self) -> dict:
+        return {
+            "status": self.status,
+            "version": self.config.get("version"),
+            "recipe": self.config.get("recipe"),
+            "tta": bool(self.config["tta"]),
+            "calibrated": self.config["temperature"] != 1.0 or any(self.config["logit_bias"]),
+            "min_mel_sensitivity_target": self.config.get("min_mel_sensitivity_target"),
         }
 
     def predict(self, image: Image.Image) -> Prediction:

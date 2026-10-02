@@ -897,6 +897,26 @@ function Sandbox({
     ? Object.entries(result.probabilities).sort((a, b) => b[1] - a[1])
     : [];
   const live = result && !result.demo_mode;
+
+  // Plain-language reading of the output; scores are model outputs, not certainty.
+  const trust = (() => {
+    if (!live || sorted.length < 2) return null;
+    const [[topKey, top], [secondKey, second]] = sorted;
+    const band =
+      top >= 0.8
+        ? { level: "High model score", note: "The model strongly prefers one class. That is still not the same as being right." }
+        : top >= 0.5
+          ? { level: "Moderate model score", note: "The model leans toward one class but other classes remain plausible." }
+          : { level: "Low model score", note: "The model is unsure. Treat this output as inconclusive." };
+    const closeCall =
+      top - second < 0.15 ? `Close call between ${labels[topKey] ?? topKey} and ${labels[secondKey] ?? secondKey}.` : null;
+    const mel = research?.evaluation?.per_class?.find((row) => row.label === "mel");
+    const melRecord =
+      mel && typeof mel.sensitivity === "number"
+        ? `On ${mel.support} held-out melanoma images, this model caught ${pct(mel.sensitivity)} and missed ${pct(1 - mel.sensitivity)}.`
+        : null;
+    return { ...band, closeCall, melRecord };
+  })();
   const showHeat = live && view === "attention" && !!result.heatmap_data_url;
   const level = !result ? (loading ? 1 : 0) : stress ? 2 : 1;
 
@@ -1082,6 +1102,22 @@ function Sandbox({
                     </span>
                   </div>
                 </div>
+
+                {trust && (
+                  <div className="trustPanel" role="note">
+                    <div className="trustHead">
+                      <span className="stepLabel">How to read this</span>
+                      <b>{trust.level}</b>
+                    </div>
+                    <p>{trust.note}</p>
+                    {trust.closeCall && <p className="trustFlag">{trust.closeCall}</p>}
+                    {trust.melRecord && <p>{trust.melRecord}</p>}
+                    <p className="trustStrong">
+                      This is not a diagnosis. If a spot is new, changing, bleeding, itchy or
+                      worrying you, have it checked by a dermatologist.
+                    </p>
+                  </div>
+                )}
 
                 <div className="probabilityRows">
                   {sorted.map(([key, value], i) => (
@@ -1332,6 +1368,13 @@ function Evidence({ research }: { research: ResearchStatus | null }) {
                   </span>
                 )}
               </div>
+
+              <p className="evalCaveat">
+                Measured once on held-out HAM10000 images. These numbers say nothing about
+                other cameras, clinics or skin tones underrepresented in the dataset. Clinical
+                use would need external validation, dermatologist review, prospective testing
+                and regulatory approval.
+              </p>
 
               {!!evaluation.per_class?.length && (
                 <div className="perClass">

@@ -7,7 +7,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, UnidentifiedImageError
 
-from .model import MODEL_PATH, DermaLensModel
+from .model import CONFIG_PATH, MODEL_PATH, DermaLensModel, sha256
 from .weights import ensure_file
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -15,6 +15,7 @@ EVALUATION_PATH = ROOT_DIR / "models" / "evaluation.json"
 
 # In the cloud, fetch hosted weights/evaluation before the model loads.
 ensure_file(MODEL_PATH, "MODEL_URL", "MODEL_SHA256")
+ensure_file(CONFIG_PATH, "CONFIG_URL")
 ensure_file(EVALUATION_PATH, "EVALUATION_URL")
 
 app = FastAPI(title="DermaLens API", version="0.6.0")
@@ -101,12 +102,25 @@ def test_image_count(raw: dict):
     return int(sum(sum(row) for row in matrix))
 
 
+def evaluation_matches_model(raw: dict) -> bool:
+    """Only publish metrics that were measured on the weights being served."""
+    if model.demo_mode:
+        return False
+    expected_file = model.config.get("evaluation_sha256")
+    if expected_file and sha256(EVALUATION_PATH) != expected_file:
+        return False
+    measured_on = (raw.get("settings") or {}).get("weights_sha256")
+    return not measured_on or measured_on == getattr(model, "weights_sha256", None)
+
+
 @app.get("/research-status")
 def research_status():
     evaluation = None
     if EVALUATION_PATH.exists():
         try:
             raw = json.loads(EVALUATION_PATH.read_text())
+            if not evaluation_matches_model(raw):
+                raise ValueError("evaluation does not belong to the loaded model")
             evaluation = {
                 "accuracy": raw.get("accuracy"),
                 "balanced_accuracy": raw.get("balanced_accuracy"),
@@ -118,11 +132,12 @@ def research_status():
                 "per_class": per_class_summary(raw),
                 "test_images": test_image_count(raw),
             }
-        except (OSError, json.JSONDecodeError):
+        except (OSError, ValueError):
             evaluation = None
 
     return {
         "model_loaded": not model.demo_mode,
+        "model": model.info(),
         "evaluation_available": evaluation is not None,
         "evaluation": evaluation,
         "implemented": {
