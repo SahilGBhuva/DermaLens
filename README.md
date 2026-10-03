@@ -242,6 +242,8 @@ Multiple origins can be comma-separated.
 
 The default API processes image bytes in memory and does not intentionally write uploads to disk. Production deployments should use HTTPS and avoid request logging that captures medical images.
 
+To explain the project in your own words (methods, metrics, limitations, likely interview questions), see [`docs/STUDY_GUIDE.md`](docs/STUDY_GUIDE.md).
+
 See `MODEL_CARD.md` for intended use and evaluation requirements, and `SECURITY.md` for deployment/privacy considerations.
 
 
