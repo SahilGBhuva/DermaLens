@@ -131,6 +131,9 @@ def research_status():
                 "multiclass_brier_score": raw.get("multiclass_brier_score"),
                 "per_class": per_class_summary(raw),
                 "test_images": test_image_count(raw),
+                # Rows are true classes, columns predicted, in model CLASSES order.
+                "confusion_matrix": raw.get("confusion_matrix"),
+                "classes": model.config["classes"],
             }
         except (OSError, ValueError):
             evaluation = None

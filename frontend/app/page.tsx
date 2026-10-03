@@ -40,6 +40,14 @@ type StressResponse = {
 
 type ResearchStatus = {
   model_loaded: boolean;
+  model?: {
+    status: string;
+    version: string | null;
+    recipe: string | null;
+    tta: boolean;
+    calibrated: boolean;
+    min_mel_sensitivity_target: number | null;
+  };
   evaluation_available: boolean;
   evaluation: null | {
     accuracy: number | null;
@@ -56,6 +64,8 @@ type ResearchStatus = {
       specificity: number | null;
       support: number;
     }[];
+    confusion_matrix?: number[][] | null;
+    classes?: string[];
   };
   implemented: Record<string, boolean>;
   note: string;
@@ -1308,6 +1318,63 @@ function RobustnessLab() {
 
 /* ───────────────────────── Evidence ───────────────────────── */
 
+function ConfusionMatrix({ matrix, classes }: { matrix: number[][]; classes: string[] }) {
+  return (
+    <div className="confusion">
+      <div className="confusionHead">
+        <span className="stepLabel">Where the mistakes go</span>
+        <p>
+          Each row is the true class; each column is what the model said. The diagonal is
+          correct. Orange cells are mistakes, darker means a larger share of that row.
+        </p>
+      </div>
+      <div className="confusionScroll">
+        <table>
+          <caption className="srOnly">Confusion matrix on the held-out test split</caption>
+          <thead>
+            <tr>
+              <th scope="col">True ↓ · Said →</th>
+              {classes.map((c) => (
+                <th scope="col" key={c} title={labels[c] ?? c}>{c.toUpperCase()}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {matrix.map((row, i) => {
+              const total = row.reduce((sum, n) => sum + n, 0) || 1;
+              return (
+                <tr key={classes[i]} className={classes[i] === "mel" ? "mel" : undefined}>
+                  <th scope="row" title={labels[classes[i]] ?? classes[i]}>
+                    {classes[i].toUpperCase()}
+                  </th>
+                  {row.map((count, j) => {
+                    const share = count / total;
+                    const style =
+                      i === j
+                        ? { background: `rgba(36, 98, 224, ${0.08 + share * 0.72})`, color: share > 0.5 ? "#fff" : undefined }
+                        : count
+                          ? { background: `rgba(232, 131, 26, ${Math.min(0.1 + share * 1.6, 0.9)})` }
+                          : undefined;
+                    return (
+                      <td
+                        key={j}
+                        style={style}
+                        title={`${labels[classes[i]] ?? classes[i]} → ${labels[classes[j]] ?? classes[j]}: ${count} of ${total}`}
+                      >
+                        {count || ""}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function Evidence({ research }: { research: ResearchStatus | null }) {
   const evaluation = research?.evaluation_available ? research.evaluation : null;
   const metrics: [string, number | null | undefined][] = [
@@ -1339,6 +1406,19 @@ function Evidence({ research }: { research: ResearchStatus | null }) {
               {evaluation ? "Available" : "Pending training"}
             </span>
           </div>
+          {research?.model_loaded && research.model && (
+            <p className="modelLine">
+              Model {research.model.version ?? "(unlabelled)"} · EfficientNet-B0 ·{" "}
+              {research.model.tta ? "4-view averaged" : "single view"} ·{" "}
+              {research.model.calibrated
+                ? `tuned on validation${
+                    research.model.min_mel_sensitivity_target
+                      ? ` (melanoma floor ${pct(research.model.min_mel_sensitivity_target)})`
+                      : ""
+                  }`
+                : "not tuned"}
+            </p>
+          )}
           <div className="metricGrid">
             {metrics.map(([label, value]) => (
               <div key={label}>
@@ -1399,6 +1479,10 @@ function Evidence({ research }: { research: ResearchStatus | null }) {
                     </div>
                   ))}
                 </div>
+              )}
+
+              {evaluation.confusion_matrix && evaluation.classes && (
+                <ConfusionMatrix matrix={evaluation.confusion_matrix} classes={evaluation.classes} />
               )}
             </>
           )}

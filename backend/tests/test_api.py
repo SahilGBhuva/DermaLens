@@ -118,6 +118,8 @@ def test_research_status_serves_real_evaluation(tmp_path, monkeypatch):
     assert body["evaluation"]["balanced_accuracy"] == 0.7
     assert body["evaluation"]["macro_ovr_roc_auc"] is None
     assert body["evaluation"]["test_images"] == 8
+    assert body["evaluation"]["confusion_matrix"] == [[3, 1], [0, 4]]
+    assert body["model"]["status"] in {"loaded", "no trained weights found", "weights failed the integrity check"}
     assert body["evaluation"]["per_class"][0] == {
         "label": "mel",
         "sensitivity": 0.75,
