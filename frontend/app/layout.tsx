@@ -11,7 +11,16 @@ const serif = Instrument_Serif({
   variable: "--font-serif",
 });
 
+// Absolute base for link-preview URLs: set NEXT_PUBLIC_SITE_URL in production;
+// on Vercel the production domain is used automatically.
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "DermaLens — See what the model sees",
     template: "%s · DermaLens",
@@ -42,9 +51,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "DermaLens — Interrogate the Model",
+    title: "DermaLens — See what the model sees",
     description:
-      "Explainable medical-image ML research for inspecting when predictions become fragile.",
+      "Inspect prediction confidence, uncertainty, model attention, robustness, and limitations.",
   },
 };
 
