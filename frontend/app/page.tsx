@@ -48,6 +48,12 @@ type ResearchStatus = {
     calibrated: boolean;
     min_mel_sensitivity_target: number | null;
   };
+  training?: {
+    epoch: number;
+    train_accuracy: number | null;
+    val_accuracy: number | null;
+    val_balanced_accuracy: number | null;
+  }[] | null;
   evaluation_available: boolean;
   evaluation: null | {
     accuracy: number | null;
@@ -308,7 +314,10 @@ export default function Home() {
           <span>2026</span>
         </div>
         <a href="#top">Back to top ↑</a>
-        <div className="footerWordmark" aria-hidden="true">DermaLens</div>
+        {/* Decorative wordmark, drawn as SVG so it isn't read or audited as text. */}
+        <svg className="footerWordmark" viewBox="0 0 1000 200" aria-hidden="true" focusable="false">
+          <text x="500" y="168" textAnchor="middle">DermaLens</text>
+        </svg>
       </footer>
     </main>
   );
@@ -326,7 +335,24 @@ const NAV_LINKS = [
 function Nav() {
   const [active, setActive] = useState<string | null>(null);
   const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const linkRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  const navRef = useRef<HTMLElement | null>(null);
+
+  // Small-screen menu: close on Escape or a tap outside.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setMenuOpen(false);
+    const onPointer = (event: PointerEvent) => {
+      if (!navRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointer);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
+    };
+  }, [menuOpen]);
 
   // Scrollspy: the last section whose top has passed 45% of the viewport wins.
   // Methodology (#research) belongs to Evidence; the hero (#top) clears it.
@@ -367,7 +393,7 @@ function Nav() {
   }, [active]);
 
   return (
-    <nav className="floatingNav">
+    <nav className="floatingNav" ref={navRef}>
       <a className="brand" href="#top" aria-label="DermaLens home">
         <BrandMark />
         <span>DermaLens</span>
@@ -395,6 +421,38 @@ function Nav() {
       <button className="navCta" onClick={() => scrollToId("sandbox")}>
         Open sandbox <Arrow />
       </button>
+      <button
+        className="navMenuButton"
+        aria-expanded={menuOpen}
+        aria-controls="nav-menu"
+        aria-label={menuOpen ? "Close menu" : "Open menu"}
+        onClick={() => setMenuOpen((open) => !open)}
+      >
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          {menuOpen ? (
+            <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          ) : (
+            <path d="M3 6h12M3 12h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          )}
+        </svg>
+      </button>
+      {menuOpen && (
+        <div className="navMenu" id="nav-menu">
+          {[...NAV_LINKS.slice(0, 1), { id: "terrain", label: "3D attention" }, ...NAV_LINKS.slice(1)].map(
+            ({ id, label }) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                className={active === id ? "active" : ""}
+                aria-current={active === id ? "location" : undefined}
+                onClick={() => setMenuOpen(false)}
+              >
+                {label}
+              </a>
+            )
+          )}
+        </div>
+      )}
     </nav>
   );
 }
@@ -595,6 +653,11 @@ function Story() {
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLElement | null>(null);
 
+  // Start paused for people who asked their system to reduce motion.
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setPaused(true);
+  }, []);
+
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
@@ -660,7 +723,23 @@ function Story() {
             })}
           </div>
 
-          <a className="storyLink" href="#sandbox">Try it on your own image →</a>
+          <div className="storyFooter">
+            <button
+              className="storyPause"
+              onClick={() => setPaused((p) => !p)}
+              aria-label={paused ? "Resume automatic steps" : "Pause automatic steps"}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                {paused ? (
+                  <path d="M3 2l9 5-9 5z" fill="currentColor" />
+                ) : (
+                  <path d="M3 2h3v10H3zM8 2h3v10H8z" fill="currentColor" />
+                )}
+              </svg>
+              {paused ? "Play" : "Pause"}
+            </button>
+            <a className="storyLink" href="#sandbox">Try it on your own image →</a>
+          </div>
         </div>
 
         <div className="storyScreen">
@@ -1318,6 +1397,75 @@ function RobustnessLab() {
 
 /* ───────────────────────── Evidence ───────────────────────── */
 
+type CurveRow = NonNullable<ResearchStatus["training"]>[number];
+
+function TrainingCurve({ rows }: { rows: CurveRow[] }) {
+  const W = 600, H = 220, L = 44, R = 16, T = 14, B = 34;
+  const series = [
+    { key: "train_accuracy", label: "Training images", color: "#8d9db4", dash: "5 5" },
+    { key: "val_accuracy", label: "Validation images", color: "#2462e0", dash: "" },
+    { key: "val_balanced_accuracy", label: "Validation, balanced", color: "#c66a0a", dash: "2 4" },
+  ] as const;
+  const present = series.filter((s) => rows.some((r) => typeof r[s.key] === "number"));
+  const values = rows.flatMap((r) => present.map((s) => r[s.key])).filter((v): v is number => typeof v === "number");
+  const lo = Math.max(0, Math.floor(Math.min(...values) * 10) / 10);
+  const hi = Math.min(1, Math.ceil(Math.max(...values) * 10) / 10);
+  const x = (epoch: number) => L + ((epoch - 1) / Math.max(rows.length - 1, 1)) * (W - L - R);
+  const y = (v: number) => T + (1 - (v - lo) / (hi - lo || 1)) * (H - T - B);
+  const ticks = Array.from({ length: Math.round((hi - lo) * 10) + 1 }, (_, i) => lo + i / 10);
+  const last = rows[rows.length - 1];
+  const gap =
+    typeof last.train_accuracy === "number" && typeof last.val_accuracy === "number"
+      ? last.train_accuracy - last.val_accuracy
+      : null;
+
+  return (
+    <div className="curve">
+      <div className="confusionHead">
+        <span className="stepLabel">How training went</span>
+        <p>
+          Accuracy after each epoch on the images it learned from versus validation images
+          it never trained on.
+          {gap !== null && gap > 0.05 &&
+            ` By the last epoch the gap is ${Math.round(gap * 100)} points — the model was starting to memorise its training images (overfitting). DermaLens keeps the epoch that did best on validation, not the last one.`}
+        </p>
+      </div>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        role="img"
+        aria-label={`Training curve over ${rows.length} epochs. Final training accuracy ${pct(last.train_accuracy ?? 0)}, validation accuracy ${pct(last.val_accuracy ?? 0)}.`}
+      >
+        {ticks.map((t) => (
+          <g key={t}>
+            <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="#e1e8f1" />
+            <text x={L - 8} y={y(t) + 4} textAnchor="end" className="curveAxis">{Math.round(t * 100)}%</text>
+          </g>
+        ))}
+        {rows.map((r) => (
+          <text key={r.epoch} x={x(r.epoch)} y={H - 12} textAnchor="middle" className="curveAxis">{r.epoch}</text>
+        ))}
+        {present.map((s) => {
+          const pts = rows.filter((r) => typeof r[s.key] === "number").map((r) => `${x(r.epoch)},${y(r[s.key] as number)}`);
+          return (
+            <polyline key={s.key} points={pts.join(" ")} fill="none" stroke={s.color} strokeWidth="2.5" strokeDasharray={s.dash} strokeLinejoin="round" />
+          );
+        })}
+      </svg>
+      <ul className="curveLegend">
+        {present.map((s) => (
+          <li key={s.key}>
+            <svg width="26" height="8" aria-hidden="true">
+              <line x1="0" x2="26" y1="4" y2="4" stroke={s.color} strokeWidth="2.5" strokeDasharray={s.dash} />
+            </svg>
+            {s.label}
+          </li>
+        ))}
+        <li className="curveAxisNote">Epoch →</li>
+      </ul>
+    </div>
+  );
+}
+
 function ConfusionMatrix({ matrix, classes }: { matrix: number[][]; classes: string[] }) {
   return (
     <div className="confusion">
@@ -1351,7 +1499,7 @@ function ConfusionMatrix({ matrix, classes }: { matrix: number[][]; classes: str
                     const share = count / total;
                     const style =
                       i === j
-                        ? { background: `rgba(36, 98, 224, ${0.08 + share * 0.72})`, color: share > 0.5 ? "#fff" : undefined }
+                        ? { background: `rgba(36, 98, 224, ${0.08 + share * 0.47})` } // ≥ 4.5:1 with ink text
                         : count
                           ? { background: `rgba(232, 131, 26, ${Math.min(0.1 + share * 1.6, 0.9)})` }
                           : undefined;
@@ -1483,6 +1631,10 @@ function Evidence({ research }: { research: ResearchStatus | null }) {
 
               {evaluation.confusion_matrix && evaluation.classes && (
                 <ConfusionMatrix matrix={evaluation.confusion_matrix} classes={evaluation.classes} />
+              )}
+
+              {research?.training && research.training.length > 1 && (
+                <TrainingCurve rows={research.training} />
               )}
             </>
           )}

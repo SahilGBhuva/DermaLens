@@ -126,3 +126,25 @@ def test_research_status_serves_real_evaluation(tmp_path, monkeypatch):
         "specificity": 1.0,
         "support": 4,
     }
+
+
+def test_training_curve_only_for_loaded_model(tmp_path, monkeypatch):
+    import json
+
+    from app import main
+
+    history = tmp_path / "training_history.json"
+    history.write_text(json.dumps([
+        {"epoch": 1, "train_accuracy": 0.6, "val_accuracy": 0.65, "val_loss": 1.0},
+        {"epoch": 2, "train_accuracy": 0.8, "val_accuracy": 0.75, "val_loss": 0.8},
+    ]))
+    monkeypatch.setattr(main, "HISTORY_PATH", history)
+
+    monkeypatch.setattr(main.model, "demo_mode", True)
+    assert client.get("/research-status").json()["training"] is None
+
+    monkeypatch.setattr(main.model, "demo_mode", False)
+    curve = client.get("/research-status").json()["training"]
+    assert [row["epoch"] for row in curve] == [1, 2]
+    assert curve[1]["val_accuracy"] == 0.75
+    assert "val_loss" not in curve[0]

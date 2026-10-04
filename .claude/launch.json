@@ -3,18 +3,21 @@
   "configurations": [
     {
       "name": "frontend",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "-p", "3100"],
-      "port": 3100
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd frontend && NEXT_PUBLIC_API_URL=http://127.0.0.1:8765 npm run dev -- -p 3210"
+      ],
+      "port": 3210
     },
     {
       "name": "backend",
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "cd backend && CORS_ORIGINS=http://localhost:3100,http://localhost:3000 ../.venv/bin/uvicorn app.main:app --port 8000"
+        "cd backend && CORS_ORIGINS=http://localhost:3210,http://127.0.0.1:3210,http://localhost:3000 ../.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8765"
       ],
-      "port": 8000
+      "port": 8765
     }
   ]
 }

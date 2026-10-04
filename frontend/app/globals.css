@@ -216,6 +216,41 @@ h1 em, h2 em, h3 em { color: var(--blue); }
 }
 .navCta:hover { background: #243756; }
 
+.navMenuButton {
+  display: none;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 14px;
+  background: #e6edf6;
+  color: var(--ink);
+}
+.navMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .96);
+  border: 1px solid #fff;
+  box-shadow: 0 18px 44px rgba(33, 58, 94, .16);
+  animation: fadeUp .2s ease both;
+}
+.navMenu a {
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #44576f;
+}
+.navMenu a:hover, .navMenu a.active { background: #e6edf6; color: var(--ink); }
+
 /* ───────── Hero ───────── */
 
 .hero {
@@ -549,7 +584,7 @@ h1 em, h2 em, h3 em { color: var(--blue); }
 .storyStep:hover { background: var(--night-2); }
 .storyStep.active { background: #132238; }
 .storyStepTitle { display: flex; align-items: baseline; gap: 14px; font-size: 20px; font-weight: 500; color: var(--night-muted); }
-.storyStepTitle .mono { font-size: 12px; color: #5e7090; }
+.storyStepTitle .mono { font-size: 12px; color: var(--night-muted); }
 .storyStep.active .storyStepTitle { color: #fff; }
 .storyStep.active .storyStepTitle .mono { color: var(--glow-soft); }
 .storyStepBody {
@@ -571,7 +606,21 @@ h1 em, h2 em, h3 em { color: var(--blue); }
 .storyProgress i.running { animation: fill 5s linear both; }
 .storyProgress i.full { width: 100%; }
 
-.storyLink { margin-top: auto; font-size: 15px; font-weight: 500; color: var(--glow-soft); }
+.storyFooter { margin-top: auto; display: flex; align-items: center; gap: 20px; }
+.storyLink { font-size: 15px; font-weight: 500; color: var(--glow-soft); }
+.storyPause {
+  height: 44px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid #2a3b56;
+  background: transparent;
+  color: var(--night-soft);
+  font-size: 14px;
+}
+.storyPause:hover { color: #fff; border-color: var(--glow); }
 .storyLink:hover { color: #b9cfff; }
 
 .storyScreen {
@@ -1304,6 +1353,13 @@ h1 em, h2 em, h3 em { color: var(--blue); }
 .confusion tbody th { text-align: left; }
 .confusion td { height: 34px; text-align: center; border-radius: 6px; background: var(--paper-soft); color: var(--ink); }
 .confusion tr.mel th { color: var(--blue); font-weight: 600; }
+.curve { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; }
+.curve svg[role="img"] { width: 100%; height: auto; }
+.curveAxis { font-family: var(--mono); font-size: 11px; fill: var(--subtle); }
+.curveLegend { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
+.curveLegend li { display: flex; align-items: center; gap: 8px; }
+.curveAxisNote { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--subtle); }
+
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .evalCaveat { margin: 0; font-size: 13px; line-height: 1.55; color: var(--subtle); }
@@ -1424,15 +1480,18 @@ footer {
 footer > a { font-size: 14px; font-weight: 500; color: var(--blue); }
 .footerWordmark {
   flex-basis: 100%;
-  margin: 40px 0 -.17em;
-  font-family: var(--serif);
-  font-size: clamp(88px, 21vw, 320px);
-  line-height: .78;
-  letter-spacing: -.04em;
-  text-align: center;
-  color: #dfe7f1;
+  width: 100%;
+  height: auto;
+  margin: 40px 0 -3.5%;
+  display: block;
   user-select: none;
-  overflow: hidden;
+  pointer-events: none;
+}
+.footerWordmark text {
+  font-family: var(--serif);
+  font-size: 236px;
+  letter-spacing: -.04em;
+  fill: #dfe7f1;
 }
 
 /* ───────── Motion ───────── */
@@ -1474,8 +1533,9 @@ footer > a { font-size: 14px; font-weight: 500; color: var(--blue); }
   }
 }
 
+/* Motion only, no fade: text keeps full contrast at every point of the reveal. */
 @keyframes reveal {
-  from { opacity: 0; transform: translateY(48px) scale(.97); }
+  from { transform: translateY(56px) scale(.97); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1496,7 +1556,7 @@ footer > a { font-size: 14px; font-weight: 500; color: var(--blue); }
   .instrument { max-width: 780px; width: 100%; margin: 0 auto; }
   .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .storyInner { grid-template-columns: minmax(0, 1fr); gap: 40px; }
-  .storyLink { margin-top: 0; }
+  .storyFooter { margin-top: 0; }
   .storyScreen { min-height: 0; }
   .paneAnalyze, .paneAttention { flex-direction: column; align-items: stretch; }
   .paneLens, .paneLens.large { width: min(380px, 100%); align-self: center; }
@@ -1513,6 +1573,15 @@ footer > a { font-size: 14px; font-weight: 500; color: var(--blue); }
 
 @media (max-width: 920px) {
   .navLinks { display: none; }
+  .navMenuButton { display: inline-flex; }
+}
+
+@media (min-width: 921px) {
+  .navMenu { display: none; }
+}
+
+@media (max-width: 480px) {
+  .navCta { display: none; }
 }
 
 @media (max-width: 760px) {

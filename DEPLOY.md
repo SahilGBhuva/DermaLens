@@ -24,7 +24,7 @@ python ml/install_model.py --from ~/Downloads --version v2
 
 ## 2. Publish the trained files
 
-On GitHub: **Releases → Draft a new release**, tag `model-v1`, attach `dermalens_efficientnet_b0.pt`, `model_config.json` and `evaluation.json`, publish.
+On GitHub: **Releases → Draft a new release**, tag `model-v1`, attach `dermalens_efficientnet_b0.pt`, `model_config.json`, `evaluation.json` and `training_history.json`, publish.
 
 `model_config.json` tells the API how the model was tested (preprocessing, flip-averaging, calibration) and holds the weights' SHA-256; the API refuses weights that don't match it.
 
@@ -41,6 +41,7 @@ https://github.com/SahilGBhuva/DermaLens/releases/download/model-v1/dermalens_ef
    - `MODEL_URL` — the `.pt` release link from step 2
    - `CONFIG_URL` — the `model_config.json` release link
    - `EVALUATION_URL` — the `evaluation.json` release link
+   - optionally `HISTORY_URL` — the `training_history.json` release link (shows the training curve)
    - `CORS_ORIGINS` — your Vercel address from step 4 (you can come back and set it after)
    - optionally `MODEL_SHA256` — the hash Colab printed, so a corrupted download is refused
 3. Deploy. When it is live, open `https://<your-api>.onrender.com/health` — it should show `"model_loaded": true`.

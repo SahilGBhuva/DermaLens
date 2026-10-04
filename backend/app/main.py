@@ -16,11 +16,13 @@ from .weights import ensure_file
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 EVALUATION_PATH = ROOT_DIR / "models" / "evaluation.json"
+HISTORY_PATH = ROOT_DIR / "models" / "training_history.json"
 
 # In the cloud, fetch hosted weights/evaluation before the model loads.
 ensure_file(MODEL_PATH, "MODEL_URL", "MODEL_SHA256")
 ensure_file(CONFIG_PATH, "CONFIG_URL")
 ensure_file(EVALUATION_PATH, "EVALUATION_URL")
+ensure_file(HISTORY_PATH, "HISTORY_URL")
 
 # Upload limits. A small, highly compressed file can decode to a huge image
 # ("decompression bomb"), so the pixel count is checked before decoding.
@@ -161,6 +163,18 @@ def evaluation_matches_model(raw: dict) -> bool:
     return not measured_on or measured_on == getattr(model, "weights_sha256", None)
 
 
+def training_curve():
+    """Per-epoch train/validation accuracy for the served model, if available."""
+    if model.demo_mode or not HISTORY_PATH.exists():
+        return None
+    try:
+        rows = json.loads(HISTORY_PATH.read_text())
+    except (OSError, ValueError):
+        return None
+    keys = ("epoch", "train_accuracy", "val_accuracy", "val_balanced_accuracy")
+    return [{k: row.get(k) for k in keys} for row in rows if isinstance(row, dict)] or None
+
+
 @app.get("/research-status")
 def research_status():
     evaluation = None
@@ -189,6 +203,7 @@ def research_status():
     return {
         "model_loaded": not model.demo_mode,
         "model": model.info(),
+        "training": training_curve(),
         "evaluation_available": evaluation is not None,
         "evaluation": evaluation,
         "implemented": {

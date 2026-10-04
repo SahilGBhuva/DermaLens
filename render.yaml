@@ -17,3 +17,6 @@ services:
         sync: false
       - key: EVALUATION_URL
         sync: false
+      # Optional: training_history.json, for the training curve on the Evidence page
+      - key: HISTORY_URL
+        sync: false
