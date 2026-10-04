@@ -33,3 +33,9 @@ def test_no_url_means_no_download(tmp_path, monkeypatch):
     target = tmp_path / "model.pt"
     ensure_file(target, "MODEL_URL")
     assert not target.exists()
+
+
+def test_rejects_insecure_url(tmp_path, monkeypatch):
+    monkeypatch.setenv("MODEL_URL", "http://example.com/model.pt")
+    with pytest.raises(RuntimeError, match="https"):
+        ensure_file(tmp_path / "model.pt", "MODEL_URL")

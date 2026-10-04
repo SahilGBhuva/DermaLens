@@ -1,11 +1,15 @@
+import asyncio
 import json
 import os
+import warnings
 from io import BytesIO
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from PIL import Image, UnidentifiedImageError
+from starlette.concurrency import run_in_threadpool
 
 from .model import CONFIG_PATH, MODEL_PATH, DermaLensModel, sha256
 from .weights import ensure_file
@@ -18,7 +22,19 @@ ensure_file(MODEL_PATH, "MODEL_URL", "MODEL_SHA256")
 ensure_file(CONFIG_PATH, "CONFIG_URL")
 ensure_file(EVALUATION_PATH, "EVALUATION_URL")
 
-app = FastAPI(title="DermaLens API", version="0.6.0")
+# Upload limits. A small, highly compressed file can decode to a huge image
+# ("decompression bomb"), so the pixel count is checked before decoding.
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_PIXELS = 25_000_000  # ~5000 x 5000; dermoscopy images are far smaller
+WORKING_SIZE = 1024  # larger uploads are shrunk first; HAM10000 images are 600 x 450
+Image.MAX_IMAGE_PIXELS = MAX_PIXELS
+warnings.simplefilter("error", Image.DecompressionBombWarning)
+
+# At most two analyses at once keeps peak memory inside a small free instance.
+INFERENCE_SLOTS = asyncio.Semaphore(int(os.getenv("INFERENCE_CONCURRENCY", "2")))
+QUEUE_TIMEOUT_SECONDS = 30
+
+app = FastAPI(title="DermaLens API", version="0.7.0")
 model = DermaLensModel()
 
 cors_origins = [
@@ -30,10 +46,31 @@ cors_origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_credentials=True,
+    allow_credentials=False,  # the API uses no cookies or auth headers
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def reject_oversized_bodies(request: Request, call_next):
+    """Refuse oversized uploads from the declared length, before parsing them."""
+    length = request.headers.get("content-length")
+    if length and length.isdigit() and int(length) > MAX_UPLOAD_BYTES + 64 * 1024:
+        return JSONResponse({"detail": "Image must be under 10 MB."}, status_code=413)
+    return await call_next(request)
+
+
+async def run_inference(fn, image):
+    """Run model work off the event loop, with a bounded number at once."""
+    try:
+        await asyncio.wait_for(INFERENCE_SLOTS.acquire(), timeout=QUEUE_TIMEOUT_SECONDS)
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(status_code=503, detail="DermaLens is busy. Please try again shortly.") from exc
+    try:
+        return await run_in_threadpool(fn, image)
+    finally:
+        INFERENCE_SLOTS.release()
 
 
 @app.get("/")
@@ -59,17 +96,26 @@ async def load_image(file: UploadFile) -> Image.Image:
     if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(status_code=400, detail="Upload a JPEG, PNG, or WebP image.")
 
-    raw = await file.read()
+    # Read at most one byte past the limit, never the whole stream.
+    raw = await file.read(MAX_UPLOAD_BYTES + 1)
     if not raw:
         raise HTTPException(status_code=400, detail="The uploaded file is empty.")
-    if len(raw) > 10 * 1024 * 1024:
+    if len(raw) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Image must be under 10 MB.")
 
     try:
         check = Image.open(BytesIO(raw))
+        width, height = check.size  # header only; nothing decoded yet
+        if width * height > MAX_PIXELS:
+            raise HTTPException(status_code=413, detail="Image dimensions are too large (max 25 megapixels).")
         check.verify()
-        image = Image.open(BytesIO(raw)).convert("RGB")
-    except (UnidentifiedImageError, OSError) as exc:
+        image = Image.open(BytesIO(raw))
+        image.draft("RGB", (WORKING_SIZE, WORKING_SIZE))  # JPEG: decode at reduced size
+        image = image.convert("RGB")
+        image.thumbnail((WORKING_SIZE, WORKING_SIZE))
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        raise HTTPException(status_code=413, detail="Image dimensions are too large (max 25 megapixels).") from exc
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as exc:
         raise HTTPException(status_code=400, detail="Invalid image file.") from exc
 
     if image.width < 32 or image.height < 32:
@@ -160,7 +206,7 @@ def research_status():
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     image = await load_image(file)
-    result = model.predict(image)
+    result = await run_inference(model.predict, image)
 
     return {
         "top_class": result.top_class,
@@ -180,4 +226,4 @@ async def predict(file: UploadFile = File(...)):
 @app.post("/stress-test")
 async def stress_test(file: UploadFile = File(...)):
     image = await load_image(file)
-    return model.stress_test(image)
+    return await run_inference(model.stress_test, image)

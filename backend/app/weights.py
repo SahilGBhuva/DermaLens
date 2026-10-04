@@ -23,6 +23,8 @@ def ensure_file(path: Path, url_env: str, sha256_env: str | None = None) -> None
     url = os.getenv(url_env, "").strip()
     if path.exists() or not url:
         return
+    if not url.startswith(("https://", "file://")):
+        raise RuntimeError(f"{url_env} must be an https:// URL")
 
     path.parent.mkdir(parents=True, exist_ok=True)
     log.info("Downloading %s from %s", path.name, url)
