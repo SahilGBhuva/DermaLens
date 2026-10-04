@@ -4,6 +4,30 @@ DermaLens is an educational/research web app for experimenting with machine-lear
 
 > **Important:** DermaLens is not a medical device and does not diagnose cancer. Its outputs are for education and model research only.
 
+## At a glance
+
+- **What it does:** upload a dermatoscopic image → see all seven class probabilities, a Grad-CAM attention overlay, and whether the answer survives darker, brighter, lower-contrast and blurred versions of the same photo.
+- **Model:** EfficientNet-B0 fine-tuned on HAM10000 with a lesion-level train / validation / test split.
+- **v1 held-out test results** (1,494 images, scored once): accuracy 0.801 · balanced accuracy 0.741 · macro F1 0.640 · ROC-AUC 0.944 · **melanoma sensitivity 0.64** (about 1 in 3 missed). Details and limitations in [`MODEL_CARD.md`](MODEL_CARD.md).
+- **Honesty by design:** metrics are only shown for the exact model file being served (SHA-256 checked); illustrative sections are labelled; every result says it is not a diagnosis.
+- **Quality:** 35 automated tests; Lighthouse performance 98, accessibility 100, best practices 100, SEO 100; API load-tested inside a 512 MB container.
+- **Docs:** [`DEPLOY.md`](DEPLOY.md) (cloud setup) · [`SECURITY.md`](SECURITY.md) · [`CAC_DEMO.md`](CAC_DEMO.md) (demo script) · [`docs/STUDY_GUIDE.md`](docs/STUDY_GUIDE.md).
+
+### Run it locally
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r backend/requirements.txt -r ml/requirements.txt
+
+# API (port 8765)
+cd backend && CORS_ORIGINS=http://localhost:3210 uvicorn app.main:app --port 8765
+
+# Website (another terminal, port 3210)
+cd frontend && npm install && NEXT_PUBLIC_API_URL=http://127.0.0.1:8765 npm run dev -- -p 3210
+```
+
+Put trained files in `models/` (or install them with `python ml/install_model.py --from ~/Downloads`); without them the API runs in a clearly labelled demo mode.
+
 ## What is implemented
 
 - Next.js site with an interactive scope hero, a four-step "how it works" walkthrough, a 3D "attention landscape" (three.js, loaded only when scrolled into view), a robustness lab, and an evidence page that only shows real held-out metrics, including per-class sensitivity once an evaluation exists
