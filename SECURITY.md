@@ -25,7 +25,7 @@ API (`backend/app/main.py`):
 - Uploads are limited to 10 MB. The declared request size is checked before parsing, and at most 10 MB + 1 byte is ever read.
 - Images over 25 megapixels are rejected from the file header **before decoding**, which blocks decompression bombs (small files that expand to gigabytes in memory). Accepted images are shrunk to at most 1024 px first.
 - Only JPEG, PNG and WebP are accepted, and files are verified before use.
-- At most two analyses run at once (`INFERENCE_CONCURRENCY`); others wait up to 30 seconds, then get a 503 "busy" response. Inference runs off the event loop, so health checks stay responsive.
+- One analysis runs at a time by default (`INFERENCE_CONCURRENCY`); others wait up to 30 seconds, then get a 503 "busy" response. Load-testing in a 512 MB container showed two concurrent Grad-CAM requests could exceed the memory limit. Inference runs off the event loop, so health checks stay responsive.
 - CORS allows only the origins in `CORS_ORIGINS` and no credentials (the API uses no cookies or auth).
 
 Model integrity:

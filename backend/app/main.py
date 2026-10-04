@@ -30,8 +30,10 @@ WORKING_SIZE = 1024  # larger uploads are shrunk first; HAM10000 images are 600 
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 warnings.simplefilter("error", Image.DecompressionBombWarning)
 
-# At most two analyses at once keeps peak memory inside a small free instance.
-INFERENCE_SLOTS = asyncio.Semaphore(int(os.getenv("INFERENCE_CONCURRENCY", "2")))
+# One analysis at a time by default: in a 512 MB container, two concurrent
+# Grad-CAM passes exceeded the limit and the process was OOM-killed. Each request
+# takes ~1 s, so others simply queue. Raise this on larger instances.
+INFERENCE_SLOTS = asyncio.Semaphore(int(os.getenv("INFERENCE_CONCURRENCY", "1")))
 QUEUE_TIMEOUT_SECONDS = 30
 
 app = FastAPI(title="DermaLens API", version="0.7.0")

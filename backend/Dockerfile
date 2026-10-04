@@ -19,7 +19,13 @@ RUN useradd --create-home --uid 10001 dermalens \
     && chown dermalens /models
 USER dermalens
 
-ENV PORT=8000
+ENV PORT=8000 \
+    # Return freed memory to the OS instead of holding per-thread arenas;
+    # keeps the API inside a 512 MB free instance.
+    MALLOC_ARENA_MAX=2 \
+    MALLOC_TRIM_THRESHOLD_=131072 \
+    TORCH_THREADS=2 \
+    INFERENCE_CONCURRENCY=1
 EXPOSE 8000
 
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]

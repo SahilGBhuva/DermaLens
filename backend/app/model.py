@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import math
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
@@ -20,6 +21,9 @@ MODEL_PATH = MODELS_DIR / "dermalens_efficientnet_b0.pt"
 CONFIG_PATH = MODELS_DIR / "model_config.json"
 
 log = logging.getLogger("dermalens.model")
+
+# Fewer intra-op threads keeps per-request memory down on small instances.
+torch.set_num_threads(max(1, int(os.getenv("TORCH_THREADS", "2"))))
 
 # Mirrors ml/model.py default_config(): a plain, uncalibrated, single-view model.
 DEFAULT_CONFIG = {
