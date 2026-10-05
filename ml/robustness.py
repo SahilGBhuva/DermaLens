@@ -29,7 +29,7 @@ def main():
 
     device = pick_device()
     model = build_model(pretrained=False).to(device)
-    model.load_state_dict(torch.load(args.weights, map_location=device))
+    model.load_state_dict(torch.load(args.weights, map_location=device, weights_only=True))
     model.eval()
 
     image = Image.open(args.image).convert("RGB")

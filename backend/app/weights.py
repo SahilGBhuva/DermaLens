@@ -23,13 +23,16 @@ def ensure_file(path: Path, url_env: str, sha256_env: str | None = None) -> None
     url = os.getenv(url_env, "").strip()
     if path.exists() or not url:
         return
-    if not url.startswith(("https://", "file://")):
+    # https only; local file:// sources only when explicitly enabled (tests,
+    # local container checks).
+    allowed = ("https://", "file://") if os.getenv("DERMALENS_ALLOW_FILE_URLS") == "1" else ("https://",)
+    if not url.startswith(allowed):
         raise RuntimeError(f"{url_env} must be an https:// URL")
 
     path.parent.mkdir(parents=True, exist_ok=True)
     log.info("Downloading %s from %s", path.name, url)
     with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as tmp:
-        with urllib.request.urlopen(url, timeout=120) as response:
+        with urllib.request.urlopen(url, timeout=120) as response:  # nosec B310: scheme checked above
             shutil.copyfileobj(response, tmp)
         tmp_path = Path(tmp.name)
 

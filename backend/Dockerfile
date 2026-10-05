@@ -20,6 +20,7 @@ RUN useradd --create-home --uid 10001 dermalens \
 USER dermalens
 
 ENV PORT=8000 \
+    DERMALENS_ENV=production \
     # Return freed memory to the OS instead of holding per-thread arenas;
     # keeps the API inside a 512 MB free instance.
     MALLOC_ARENA_MAX=2 \

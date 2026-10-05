@@ -87,7 +87,7 @@ def main():
 
     device = pick_device()
     model = build_model(pretrained=False).to(device)
-    model.load_state_dict(torch.load(args.weights, map_location=device))
+    model.load_state_dict(torch.load(args.weights, map_location=device, weights_only=True))
     ds = SkinLesionDataset(args.csv, {c: i for i, c in enumerate(CLASSES)}, eval_transform(config["image_size"]))
     y, probs = collect_probs(model, DataLoader(ds, batch_size=args.batch_size), device, args.tta)
 

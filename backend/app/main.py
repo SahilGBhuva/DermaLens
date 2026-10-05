@@ -5,12 +5,12 @@ import warnings
 from io import BytesIO
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from PIL import Image, UnidentifiedImageError
 from starlette.concurrency import run_in_threadpool
 
+from .guards import RequestGuard
 from .model import CONFIG_PATH, MODEL_PATH, DermaLensModel, sha256
 from .weights import ensure_file
 
@@ -38,7 +38,19 @@ warnings.simplefilter("error", Image.DecompressionBombWarning)
 INFERENCE_SLOTS = asyncio.Semaphore(int(os.getenv("INFERENCE_CONCURRENCY", "1")))
 QUEUE_TIMEOUT_SECONDS = 30
 
-app = FastAPI(title="DermaLens API", version="0.7.0")
+# Only the formats the site accepts are ever handed to an image decoder,
+# whatever Content-Type the client claims (each extra decoder is attack surface).
+DECODERS = ["JPEG", "PNG", "WEBP"]
+
+PRODUCTION = os.getenv("DERMALENS_ENV", "development") == "production"
+app = FastAPI(
+    title="DermaLens API",
+    version="0.8.0",
+    # Interactive docs are handy locally but not needed on the public API.
+    docs_url=None if PRODUCTION else "/docs",
+    redoc_url=None,
+    openapi_url=None if PRODUCTION else "/openapi.json",
+)
 model = DermaLensModel()
 
 cors_origins = [
@@ -47,6 +59,17 @@ cors_origins = [
     if origin.strip()
 ]
 
+# Added before CORS so CORS wraps it: 413/429 replies still carry CORS headers
+# and the browser can show the message instead of a generic network error.
+app.add_middleware(
+    RequestGuard,
+    max_body_bytes=MAX_UPLOAD_BYTES + 64 * 1024,  # file plus multipart framing
+    limited_paths=("/predict", "/stress-test"),
+    rate_limit=int(os.getenv("RATE_LIMIT_REQUESTS", "30")),
+    rate_window_seconds=float(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "600")),
+    trust_proxy_headers=os.getenv("TRUST_PROXY_HEADERS") == "1",
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -54,15 +77,6 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
-
-
-@app.middleware("http")
-async def reject_oversized_bodies(request: Request, call_next):
-    """Refuse oversized uploads from the declared length, before parsing them."""
-    length = request.headers.get("content-length")
-    if length and length.isdigit() and int(length) > MAX_UPLOAD_BYTES + 64 * 1024:
-        return JSONResponse({"detail": "Image must be under 10 MB."}, status_code=413)
-    return await call_next(request)
 
 
 async def run_inference(fn, image):
@@ -108,12 +122,12 @@ async def load_image(file: UploadFile) -> Image.Image:
         raise HTTPException(status_code=413, detail="Image must be under 10 MB.")
 
     try:
-        check = Image.open(BytesIO(raw))
+        check = Image.open(BytesIO(raw), formats=DECODERS)
         width, height = check.size  # header only; nothing decoded yet
         if width * height > MAX_PIXELS:
             raise HTTPException(status_code=413, detail="Image dimensions are too large (max 25 megapixels).")
         check.verify()
-        image = Image.open(BytesIO(raw))
+        image = Image.open(BytesIO(raw), formats=DECODERS)
         image.draft("RGB", (WORKING_SIZE, WORKING_SIZE))  # JPEG: decode at reduced size
         image = image.convert("RGB")
         image.thumbnail((WORKING_SIZE, WORKING_SIZE))
