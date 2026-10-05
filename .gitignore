@@ -22,3 +22,6 @@ data/
 
 # Trained-model metadata travels with the weights (GitHub Release), not git
 models/*.json
+
+# Everything under models/ (weights, metadata, backups) travels via GitHub Releases
+models/

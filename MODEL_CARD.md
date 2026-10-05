@@ -102,9 +102,47 @@ Reading these honestly:
 - The dermatofibroma (7 images) and vascular (21 images) results rest on very few examples and are highly uncertain.
 - Training accuracy reached 0.92 against 0.80 on validation by epoch 12, i.e. the model overfits; v2 adds stronger augmentation and early stopping.
 
-## v2 plan (not yet run)
+## Results — v2 (2026-10-05)
 
-Stronger augmentation (crops, rotation, lighting and blur), label smoothing, up to 25 epochs with early stopping, recipe choice between weighted CE and focal loss with balanced sampling on validation, flip-averaged predictions, and validation-only calibration with a melanoma-sensitivity floor. Raising melanoma sensitivity will lower specificity (more false alarms); that trade-off is deliberate and will be reported.
+Recipe: stronger augmentation, label smoothing 0.1, warm-up + cosine schedule, up to 25 epochs with early stopping. Two candidates were trained; **weighted cross-entropy** was chosen on validation balanced accuracy (0.776 vs 0.732 for focal loss + balanced sampling). Then, on validation only: flip-averaged predictions, temperature 0.7, and per-class offsets `[-1.3, -1.2, -0.5, -0.4, +0.3, 0, -0.2]` (akiec … vasc) chosen to maximise balanced accuracy with a melanoma-sensitivity floor of 0.80. Validation: balanced accuracy 0.776 → 0.790, melanoma sensitivity 0.724 → 0.801.
+
+Test split scored once (1,494 images). Same split as v1.
+
+| Metric | v1 | v2 |
+|---|---|---|
+| Accuracy | 0.801 | 0.785 |
+| Balanced accuracy | 0.741 | 0.733 |
+| Macro F1 | 0.640 | 0.615 |
+| Macro one-vs-rest ROC-AUC | 0.944 | 0.902 |
+| Expected calibration error | **0.052** | **0.315** |
+| **Melanoma sensitivity** | **0.642** | **0.781** |
+| Melanoma specificity | 0.919 | 0.871 |
+
+| Class | Test images | Sensitivity v1 → v2 | Specificity v1 → v2 |
+|---|---|---|---|
+| akiec | 63 | 0.62 → **0.46** | 0.98 → 0.99 |
+| bcc | 68 | 0.82 → 0.76 | 0.98 → 0.99 |
+| bkl | 152 | 0.68 → 0.63 | 0.96 → 0.98 |
+| df | 7 | 0.57 → 0.71 | 0.98 → 0.98 |
+| **mel** | **187** | **0.64 → 0.78** | **0.92 → 0.87** |
+| nv | 996 | 0.86 → 0.83 | 0.91 → 0.93 |
+| vasc | 21 | 1.00 → 0.95 | 0.99 → 0.98 |
+
+What changed, honestly:
+
+- **Melanoma: 146 of 187 caught (was 120).** The main goal was met: sensitivity rose 14 points.
+- **More false alarms.** v2 labelled 315 test images melanoma (146 correct) versus v1's 226 (120 correct).
+- **Two other cancers got worse.** Actinic keratosis / intraepithelial carcinoma sensitivity fell from 0.62 to 0.46 and basal cell carcinoma from 0.82 to 0.76. The negative offsets on those classes moved decisions toward melanoma partly at their expense.
+- **Probabilities became poorly calibrated** (ECE 0.05 → 0.32). The offsets were tuned for decisions, not for probability accuracy, and label smoothing with class weighting already distorts the probabilities. The interface now warns when a served model's calibration error exceeds 0.10.
+- Overall balanced accuracy is essentially unchanged (−0.8 points), and ROC-AUC fell, partly because the offsets and temperature are applied before scoring.
+- **Reproducibility:** the pipeline was run twice (the first run's weights and test results were lost to a Colab disconnect before anyone saw them). Both runs produced byte-identical weights (SHA-256 `a9033a0c…`), so the reported test result is the only one ever viewed.
+
+### Lessons for a v3 (not run)
+
+1. Separate probability calibration (fit by validation NLL, e.g. vector scaling) from decision thresholds, so percentages stay honest while decisions favour sensitivity.
+2. Constrain sensitivity for all malignant or pre-malignant classes (mel, bcc, akiec), not just melanoma.
+3. Report a confidence interval for every per-class number; df and vasc have very few test images.
+4. Because v3 would be designed after seeing v2's test results, its test score should be reported as such, or validated on an external dataset (e.g. ISIC 2019/2020).
 
 ## Not clinically ready
 

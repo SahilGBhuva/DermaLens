@@ -1362,6 +1362,17 @@ h1 em, h2 em, h3 em { color: var(--blue); }
 
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
+.evalWarning {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fbf7ee;
+  border: 1px solid #ecdcb8;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #4a3d22;
+}
+
 .evalCaveat { margin: 0; font-size: 13px; line-height: 1.55; color: var(--subtle); }
 
 .perClass { display: flex; flex-direction: column; border-top: 1px solid var(--line); }

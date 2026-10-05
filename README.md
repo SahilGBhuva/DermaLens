@@ -8,7 +8,9 @@ DermaLens is an educational/research web app for experimenting with machine-lear
 
 - **What it does:** upload a dermatoscopic image → see all seven class probabilities, a Grad-CAM attention overlay, and whether the answer survives darker, brighter, lower-contrast and blurred versions of the same photo.
 - **Model:** EfficientNet-B0 fine-tuned on HAM10000 with a lesion-level train / validation / test split.
-- **v1 held-out test results** (1,494 images, scored once): accuracy 0.801 · balanced accuracy 0.741 · macro F1 0.640 · ROC-AUC 0.944 · **melanoma sensitivity 0.64** (about 1 in 3 missed). Details and limitations in [`MODEL_CARD.md`](MODEL_CARD.md).
+- **Held-out test results** (1,494 images, each scored once):
+  - v1: accuracy 0.801 · balanced accuracy 0.741 · **melanoma sensitivity 0.64** · calibration error 0.05
+  - v2: accuracy 0.785 · balanced accuracy 0.733 · **melanoma sensitivity 0.78** · calibration error 0.32 — catches 26 more melanomas, at the cost of more false alarms, lower sensitivity for two other cancers, and poorly calibrated percentages. The trade-off is analysed in [`MODEL_CARD.md`](MODEL_CARD.md).
 - **Honesty by design:** metrics are only shown for the exact model file being served (SHA-256 checked); illustrative sections are labelled; every result says it is not a diagnosis.
 - **Quality:** 35 automated tests; Lighthouse performance 98, accessibility 100, best practices 100, SEO 100; API load-tested inside a 512 MB container.
 - **Docs:** [`DEPLOY.md`](DEPLOY.md) (cloud setup) · [`SECURITY.md`](SECURITY.md) · [`CAC_DEMO.md`](CAC_DEMO.md) (demo script) · [`docs/STUDY_GUIDE.md`](docs/STUDY_GUIDE.md).

@@ -1004,7 +1004,12 @@ function Sandbox({
       mel && typeof mel.sensitivity === "number"
         ? `On ${mel.support} held-out melanoma images, this model caught ${pct(mel.sensitivity)} and missed ${pct(1 - mel.sensitivity)}.`
         : null;
-    return { ...band, closeCall, melRecord };
+    const ece = research?.evaluation?.expected_calibration_error;
+    const calibrationWarning =
+      typeof ece === "number" && ece > 0.1
+        ? `This model's percentages are not well calibrated: on held-out tests they were off by about ${Math.round(ece * 100)} points on average. Compare the classes, but don't read the percentage as a probability.`
+        : null;
+    return { ...band, closeCall, melRecord, calibrationWarning };
   })();
   const showHeat = live && view === "attention" && !!result.heatmap_data_url;
   const level = !result ? (loading ? 1 : 0) : stress ? 2 : 1;
@@ -1201,6 +1206,7 @@ function Sandbox({
                     <p>{trust.note}</p>
                     {trust.closeCall && <p className="trustFlag">{trust.closeCall}</p>}
                     {trust.melRecord && <p>{trust.melRecord}</p>}
+                    {trust.calibrationWarning && <p className="trustFlag">{trust.calibrationWarning}</p>}
                     <p className="trustStrong">
                       This is not a diagnosis. If a spot is new, changing, bleeding, itchy or
                       worrying you, have it checked by a dermatologist.
@@ -1596,6 +1602,16 @@ function Evidence({ research }: { research: ResearchStatus | null }) {
                   </span>
                 )}
               </div>
+
+              {typeof evaluation.expected_calibration_error === "number" &&
+                evaluation.expected_calibration_error > 0.1 && (
+                  <p className="evalWarning">
+                    Calibration is poor: the model&apos;s stated percentages were, on average,{" "}
+                    {Math.round(evaluation.expected_calibration_error * 100)} points away from how often it
+                    was actually right. Its decisions are measured above; its percentages should not be
+                    read as probabilities.
+                  </p>
+                )}
 
               <p className="evalCaveat">
                 Measured once on held-out HAM10000 images. These numbers say nothing about

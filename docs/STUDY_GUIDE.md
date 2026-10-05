@@ -74,6 +74,14 @@ Randomly changing training images (crops, rotations, flips, lighting, slight blu
 
 For something dangerous like melanoma, missing it (low sensitivity) is worse than a false alarm. That's why v2 pushes sensitivity up, knowing specificity will drop.
 
+**What happened in v2? (know this cold)**
+v2 tuned the model on the validation set to catch at least 80% of melanomas. On the test set it caught **78%** (up from 64%: 146 of 187 instead of 120). The costs:
+- more false alarms (315 images called melanoma, only 146 really were);
+- two other cancers were caught less often (actinic keratosis 62% → 46%, basal cell carcinoma 82% → 76%);
+- its percentages became unreliable: calibration error rose from 0.05 to 0.32, meaning they were off by about 31 points on average.
+
+The lesson: optimising one number (melanoma sensitivity) moved errors elsewhere. A better approach would protect all the cancer classes, and keep "which answer to give" separate from "how confident to say it is". Saying this clearly is a strength, not a weakness.
+
 **Why can't you trust the dermatofibroma number?**
 Only 7 test images. One more right or wrong answer moves it by 14 points.
 
@@ -150,7 +158,7 @@ Say these out loud, in under 30 seconds each:
 2. Why split the data by lesion instead of by photo?
 3. Why is balanced accuracy more honest than accuracy here?
 4. What is the difference between sensitivity and specificity?
-5. Your model misses 36% of melanomas. What did you do about it, and what's the trade-off?
+5. v1 missed 36% of melanomas. What did you change in v2, what improved, and what got worse?
 6. What does a Grad-CAM heatmap show, and what does it *not* prove?
 7. Why did you only use the test set once?
 8. Why isn't this ready for doctors to use?
