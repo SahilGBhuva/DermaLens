@@ -13,13 +13,7 @@ services:
       # Your Vercel site address, e.g. https://dermalens.vercel.app
       - key: CORS_ORIGINS
         sync: false
-      # Direct download links to the trained files (e.g. GitHub Release assets)
-      - key: MODEL_URL
-        sync: false
-      - key: CONFIG_URL
-        sync: false
-      - key: EVALUATION_URL
-        sync: false
-      # Optional: training_history.json, for the training curve on the Evidence page
-      - key: HISTORY_URL
+      # Model versions to serve, each a GitHub Release folder, default first:
+      # v2=https://github.com/<you>/DermaLens/releases/download/model-v2,v1=https://github.com/<you>/DermaLens/releases/download/model-v1
+      - key: MODEL_RELEASES
         sync: false

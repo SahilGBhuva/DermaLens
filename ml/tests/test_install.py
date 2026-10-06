@@ -62,20 +62,36 @@ def test_reports_missing_files(tmp_path):
         find_artifacts(tmp_path)
 
 
-def test_install_backs_up_previous_and_records_evaluation_hash(tmp_path):
-    models = tmp_path / "models"
-    make_download(models, b"v1-weights")
-    cfg = json.loads((models / "model_config.json").read_text())
-    (models / "model_config.json").write_text(json.dumps({**cfg, "version": "v1"}))
-    digest = make_download(tmp_path / "dl", b"v2-weights")
-
-    subprocess.run(
-        [sys.executable, str(ML / "install_model.py"), "--from", str(tmp_path / "dl"),
-         "--to", str(models), "--version", "v2"],
-        check=True, cwd=ML, capture_output=True,
+def run_install(source, models, version):
+    return subprocess.run(
+        [sys.executable, str(ML / "install_model.py"), "--from", str(source), "--to", str(models), "--version", version],
+        check=True, cwd=ML, capture_output=True, text=True,
     )
-    assert (models / "previous" / "v1" / "dermalens_efficientnet_b0.pt").read_bytes() == b"v1-weights"
-    config = json.loads((models / "model_config.json").read_text())
-    assert config["version"] == "v2"
+
+
+def test_install_into_version_folder_and_record_evaluation_hash(tmp_path):
+    models = tmp_path / "models"
+    digest = make_download(tmp_path / "dl", b"v3-weights")
+    out = run_install(tmp_path / "dl", models, "v3").stdout
+    config = json.loads((models / "v3" / "model_config.json").read_text())
+    assert config["version"] == "v3"
     assert config["weights_sha256"] == digest
-    assert config["evaluation_sha256"] == sha256(models / "evaluation.json")
+    assert config["evaluation_sha256"] == sha256(models / "v3" / "evaluation.json")
+    assert "v3" in out
+
+
+def test_reinstalling_a_version_moves_old_copy_to_hidden_backup(tmp_path):
+    models = tmp_path / "models"
+    make_download(tmp_path / "a", b"first")
+    run_install(tmp_path / "a", models, "v3")
+    make_download(tmp_path / "b", b"second")
+    run_install(tmp_path / "b", models, "v3")
+    assert (models / "v3" / "dermalens_efficientnet_b0.pt").read_bytes() == b"second"
+    backups = list((models / ".backups").iterdir())
+    assert len(backups) == 1 and (backups[0] / "dermalens_efficientnet_b0.pt").read_bytes() == b"first"
+
+
+def test_rejects_unsafe_version_names(tmp_path):
+    make_download(tmp_path / "dl")
+    with pytest.raises(subprocess.CalledProcessError):
+        run_install(tmp_path / "dl", tmp_path / "models", "../escape")

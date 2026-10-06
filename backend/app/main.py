@@ -1,28 +1,27 @@
 import asyncio
-import json
+import ctypes
+import gc
 import os
+import sys
 import warnings
 from io import BytesIO
-from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, UnidentifiedImageError
 from starlette.concurrency import run_in_threadpool
 
 from .guards import RequestGuard
-from .model import CONFIG_PATH, MODEL_PATH, DermaLensModel, sha256
+from .model import CONFIG_PATH, MODEL_PATH, MODELS_DIR
+from .registry import ModelEntry, build_registry
 from .weights import ensure_file
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-EVALUATION_PATH = ROOT_DIR / "models" / "evaluation.json"
-HISTORY_PATH = ROOT_DIR / "models" / "training_history.json"
-
-# In the cloud, fetch hosted weights/evaluation before the model loads.
+# Single-model deployments may still set MODEL_URL/CONFIG_URL/... (files land in
+# models/); multi-model deployments set MODEL_RELEASES (see registry.py).
 ensure_file(MODEL_PATH, "MODEL_URL", "MODEL_SHA256")
 ensure_file(CONFIG_PATH, "CONFIG_URL")
-ensure_file(EVALUATION_PATH, "EVALUATION_URL")
-ensure_file(HISTORY_PATH, "HISTORY_URL")
+ensure_file(MODELS_DIR / "evaluation.json", "EVALUATION_URL")
+ensure_file(MODELS_DIR / "training_history.json", "HISTORY_URL")
 
 # Upload limits. A small, highly compressed file can decode to a huge image
 # ("decompression bomb"), so the pixel count is checked before decoding.
@@ -51,7 +50,7 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None if PRODUCTION else "/openapi.json",
 )
-model = DermaLensModel()
+registry = build_registry(MODELS_DIR)
 
 cors_origins = [
     origin.strip()
@@ -88,7 +87,29 @@ async def run_inference(fn, image):
     try:
         return await run_in_threadpool(fn, image)
     finally:
+        release_memory()
         INFERENCE_SLOTS.release()
+
+
+_LIBC = ctypes.CDLL("libc.so.6") if sys.platform.startswith("linux") else None
+
+
+def release_memory():
+    """Return freed heap pages to the OS after each analysis (glibc only)."""
+    gc.collect()
+    if _LIBC is not None:
+        _LIBC.malloc_trim(0)
+
+
+def default_entry() -> ModelEntry:
+    return registry.get(None)
+
+
+def resolve(version: str | None) -> ModelEntry:
+    entry = registry.get(version)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"Unknown model version. Available: {', '.join(registry.order)}.")
+    return entry
 
 
 @app.get("/")
@@ -96,17 +117,20 @@ def root():
     return {
         "name": "DermaLens API",
         "status": "ok",
-        "demo_mode": model.demo_mode,
+        "demo_mode": default_entry().model.demo_mode,
         "medical_device": False,
     }
 
 
 @app.get("/health")
 def health():
+    loaded = [e.version for e in registry if not e.model.demo_mode]
     return {
         "ok": True,
-        "demo_mode": model.demo_mode,
-        "model_loaded": not model.demo_mode,
+        "demo_mode": not loaded,
+        "model_loaded": bool(loaded),
+        "models": loaded,
+        "default_model": registry.default if loaded else None,
     }
 
 
@@ -166,60 +190,51 @@ def test_image_count(raw: dict):
     return int(sum(sum(row) for row in matrix))
 
 
-def evaluation_matches_model(raw: dict) -> bool:
-    """Only publish metrics that were measured on the weights being served."""
-    if model.demo_mode:
-        return False
-    expected_file = model.config.get("evaluation_sha256")
-    if expected_file and sha256(EVALUATION_PATH) != expected_file:
-        return False
-    measured_on = (raw.get("settings") or {}).get("weights_sha256")
-    return not measured_on or measured_on == getattr(model, "weights_sha256", None)
+def evaluation_summary(entry: ModelEntry):
+    raw = entry.evaluation()
+    if raw is None:
+        return None
+    return {
+        "accuracy": raw.get("accuracy"),
+        "balanced_accuracy": raw.get("balanced_accuracy"),
+        "macro_f1": raw.get("macro_f1"),
+        "weighted_f1": raw.get("weighted_f1"),
+        "macro_ovr_roc_auc": raw.get("macro_ovr_roc_auc"),
+        "expected_calibration_error": raw.get("expected_calibration_error"),
+        "multiclass_brier_score": raw.get("multiclass_brier_score"),
+        "per_class": per_class_summary(raw),
+        "test_images": test_image_count(raw),
+        # Rows are true classes, columns predicted, in model CLASSES order.
+        "confusion_matrix": raw.get("confusion_matrix"),
+        "classes": entry.model.config["classes"],
+    }
 
 
-def training_curve():
-    """Per-epoch train/validation accuracy for the served model, if available."""
-    if model.demo_mode or not HISTORY_PATH.exists():
-        return None
-    try:
-        rows = json.loads(HISTORY_PATH.read_text())
-    except (OSError, ValueError):
-        return None
-    keys = ("epoch", "train_accuracy", "val_accuracy", "val_balanced_accuracy")
-    return [{k: row.get(k) for k in keys} for row in rows if isinstance(row, dict)] or None
+def model_status(entry: ModelEntry) -> dict:
+    evaluation = evaluation_summary(entry)
+    return {
+        "version": entry.version,
+        "model_loaded": not entry.model.demo_mode,
+        "model": {**entry.model.info(), "version": entry.version},
+        "training": entry.training(),
+        "evaluation_available": evaluation is not None,
+        "evaluation": evaluation,
+    }
 
 
 @app.get("/research-status")
 def research_status():
-    evaluation = None
-    if EVALUATION_PATH.exists():
-        try:
-            raw = json.loads(EVALUATION_PATH.read_text())
-            if not evaluation_matches_model(raw):
-                raise ValueError("evaluation does not belong to the loaded model")
-            evaluation = {
-                "accuracy": raw.get("accuracy"),
-                "balanced_accuracy": raw.get("balanced_accuracy"),
-                "macro_f1": raw.get("macro_f1"),
-                "weighted_f1": raw.get("weighted_f1"),
-                "macro_ovr_roc_auc": raw.get("macro_ovr_roc_auc"),
-                "expected_calibration_error": raw.get("expected_calibration_error"),
-                "multiclass_brier_score": raw.get("multiclass_brier_score"),
-                "per_class": per_class_summary(raw),
-                "test_images": test_image_count(raw),
-                # Rows are true classes, columns predicted, in model CLASSES order.
-                "confusion_matrix": raw.get("confusion_matrix"),
-                "classes": model.config["classes"],
-            }
-        except (OSError, ValueError):
-            evaluation = None
-
+    models = [model_status(entry) for entry in registry]
+    default = models[0]  # registry order starts with the default
     return {
-        "model_loaded": not model.demo_mode,
-        "model": model.info(),
-        "training": training_curve(),
-        "evaluation_available": evaluation is not None,
-        "evaluation": evaluation,
+        # Top-level fields describe the default model (original response shape).
+        "model_loaded": default["model_loaded"],
+        "model": default["model"],
+        "training": default["training"],
+        "evaluation_available": default["evaluation_available"],
+        "evaluation": default["evaluation"],
+        "default_model": registry.default,
+        "models": models,
         "implemented": {
             "lesion_level_split": True,
             "class_weighted_training": True,
@@ -235,11 +250,13 @@ def research_status():
 
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(file: UploadFile = File(...), model: str | None = Query(None, max_length=32)):
+    entry = resolve(model)
     image = await load_image(file)
-    result = await run_inference(model.predict, image)
+    result = await run_inference(entry.model.predict, image)
 
     return {
+        "model_version": entry.version,
         "top_class": result.top_class,
         "confidence": result.confidence,
         "uncertainty": result.uncertainty,
@@ -255,6 +272,7 @@ async def predict(file: UploadFile = File(...)):
 
 
 @app.post("/stress-test")
-async def stress_test(file: UploadFile = File(...)):
+async def stress_test(file: UploadFile = File(...), model: str | None = Query(None, max_length=32)):
+    entry = resolve(model)
     image = await load_image(file)
-    return await run_inference(model.stress_test, image)
+    return {"model_version": entry.version, **await run_inference(entry.model.stress_test, image)}

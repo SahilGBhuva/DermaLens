@@ -88,12 +88,20 @@ class DermaLensModel:
             state = torch.load(model_path, map_location=self.device, weights_only=True)
             self.model.load_state_dict(state)
             self.model.eval()
+            # Inference never updates weights. Grad-CAM only needs gradients of the
+            # target layer's activations (they flow from the input), so skipping
+            # per-weight gradients saves memory and time on small servers.
+            for parameter in self.model.parameters():
+                parameter.requires_grad_(False)
             self.demo_mode = False
             self.status = "loaded"
             self.weights_sha256 = actual
 
     @staticmethod
     def _pick_device() -> torch.device:
+        forced = os.getenv("DERMALENS_DEVICE")  # e.g. "cpu" to mimic the cloud server
+        if forced:
+            return torch.device(forced)
         if torch.cuda.is_available():
             return torch.device("cuda")
         if torch.backends.mps.is_available():

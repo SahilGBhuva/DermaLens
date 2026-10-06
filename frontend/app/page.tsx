@@ -14,6 +14,7 @@ import LesionScope, { ScopeMode } from "./components/LesionScope";
 import { rasterizeSvg } from "./lib/rasterize";
 
 type Prediction = {
+  model_version?: string;
   top_class: string;
   confidence: number;
   uncertainty: number;
@@ -75,6 +76,13 @@ type ResearchStatus = {
   };
   implemented: Record<string, boolean>;
   note: string;
+  default_model?: string | null;
+  models?: ModelStatus[];
+};
+
+/* One served model version, as reported by /research-status. */
+type ModelStatus = Pick<ResearchStatus, "model_loaded" | "model" | "training" | "evaluation_available" | "evaluation"> & {
+  version: string;
 };
 
 // three.js is large, so the 3D view is split into its own chunk.
@@ -908,7 +916,26 @@ function Sandbox({
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [view, setView] = useState<"original" | "attention">("attention");
+  const [choice, setChoice] = useState<string | null>(null);
+  const [comparison, setComparison] = useState<Record<string, Prediction> | null>(null);
   const sampleRef = useRef<SVGSVGElement | null>(null);
+
+  // Served versions (e.g. v2, v1). "compare" runs the image through all of them.
+  const versions = (research?.models ?? []).filter((m) => m.model_loaded).map((m) => m.version);
+  const defaultVersion = research?.default_model ?? versions[0] ?? null;
+  const selected = choice ?? defaultVersion;
+  const comparing = selected === "compare" && versions.length > 1;
+  const primaryVersion = comparing ? defaultVersion : selected;
+  const statusFor = (version: string | null | undefined) =>
+    research?.models?.find((m) => m.version === version) ?? null;
+
+  function pickModel(next: string) {
+    setChoice(next);
+    setResult(null);
+    setComparison(null);
+    setStress(null);
+    setError("");
+  }
 
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
   useEffect(() => () => {
@@ -918,6 +945,7 @@ function Sandbox({
   function chooseFile(next: File | null) {
     setFile(next);
     setResult(null);
+    setComparison(null);
     setStress(null);
     setError("");
   }
@@ -938,11 +966,12 @@ function Sandbox({
     }
   }
 
-  async function post<T>(path: string, fallback: string): Promise<T> {
+  async function post<T>(path: string, fallback: string, version?: string | null): Promise<T> {
     if (!file) throw new Error(fallback);
     const form = new FormData();
     form.append("file", file);
-    const response = await fetch(`${API}${path}`, { method: "POST", body: form });
+    const query = version ? `?model=${encodeURIComponent(version)}` : "";
+    const response = await fetch(`${API}${path}${query}`, { method: "POST", body: form });
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail ?? fallback);
     return data as T;
@@ -953,9 +982,19 @@ function Sandbox({
     setLoading(true);
     setError("");
     setResult(null);
+    setComparison(null);
     setStress(null);
     try {
-      setResult(await post<Prediction>("/predict", "Analysis failed."));
+      if (comparing) {
+        const all: Record<string, Prediction> = {};
+        for (const version of versions) {
+          all[version] = await post<Prediction>("/predict", "Analysis failed.", version);
+        }
+        setComparison(all);
+        setResult(all[defaultVersion ?? versions[0]]);
+      } else {
+        setResult(await post<Prediction>("/predict", "Analysis failed.", primaryVersion));
+      }
     } catch (err) {
       setError(
         err instanceof TypeError
@@ -974,7 +1013,9 @@ function Sandbox({
     setStressLoading(true);
     setError("");
     try {
-      setStress(await post<StressResponse>("/stress-test", "Stress test failed."));
+      setStress(
+        await post<StressResponse>("/stress-test", "Stress test failed.", result.model_version ?? primaryVersion)
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Stress test failed.");
     } finally {
@@ -986,6 +1027,8 @@ function Sandbox({
     ? Object.entries(result.probabilities).sort((a, b) => b[1] - a[1])
     : [];
   const live = result && !result.demo_mode;
+  const resultVersion = result?.model_version ?? primaryVersion;
+  const resultEvaluation = statusFor(resultVersion)?.evaluation ?? research?.evaluation ?? null;
 
   // Plain-language reading of the output; scores are model outputs, not certainty.
   const trust = (() => {
@@ -999,15 +1042,16 @@ function Sandbox({
           : { level: "Low model score", note: "The model is unsure. Treat this output as inconclusive." };
     const closeCall =
       top - second < 0.15 ? `Close call between ${labels[topKey] ?? topKey} and ${labels[secondKey] ?? secondKey}.` : null;
-    const mel = research?.evaluation?.per_class?.find((row) => row.label === "mel");
+    const mel = resultEvaluation?.per_class?.find((row) => row.label === "mel");
+    const who = resultVersion ? `model ${resultVersion}` : "this model";
     const melRecord =
       mel && typeof mel.sensitivity === "number"
-        ? `On ${mel.support} held-out melanoma images, this model caught ${pct(mel.sensitivity)} and missed ${pct(1 - mel.sensitivity)}.`
+        ? `On ${mel.support} held-out melanoma images, ${who} caught ${pct(mel.sensitivity)} and missed ${pct(1 - mel.sensitivity)}.`
         : null;
-    const ece = research?.evaluation?.expected_calibration_error;
+    const ece = resultEvaluation?.expected_calibration_error;
     const calibrationWarning =
       typeof ece === "number" && ece > 0.1
-        ? `This model's percentages are not well calibrated: on held-out tests they were off by about ${Math.round(ece * 100)} points on average. Compare the classes, but don't read the percentage as a probability.`
+        ? `${resultVersion ? `Model ${resultVersion}'s` : "This model's"} percentages are not well calibrated: on held-out tests they were off by about ${Math.round(ece * 100)} points on average. Compare the classes, but don't read the percentage as a probability.`
         : null;
     return { ...band, closeCall, melRecord, calibrationWarning };
   })();
@@ -1123,6 +1167,26 @@ function Sandbox({
               </>
             )}
 
+            {versions.length > 1 && (
+              <div className="modelPicker">
+                <span className="stepLabel" id="model-picker-label">Model version</span>
+                <span className="viewToggle" role="group" aria-labelledby="model-picker-label">
+                  {[...versions, "compare"].map((option) => (
+                    <button
+                      key={option}
+                      aria-pressed={selected === option}
+                      className={selected === option ? "active" : ""}
+                      onClick={() => pickModel(option)}
+                    >
+                      {option === "compare"
+                        ? versions.length === 2 ? "Compare both" : "Compare all"
+                        : option === defaultVersion ? `${option} (default)` : option}
+                    </button>
+                  ))}
+                </span>
+              </div>
+            )}
+
             <button className="analyzeButton" onClick={analyze} disabled={!file || loading}>
               <span>{loading ? "Running analysis…" : result ? "Analyze again" : "Analyze image"}</span>
               <Arrow size={18} />
@@ -1168,9 +1232,15 @@ function Sandbox({
               </div>
             ) : (
               <div className="liveResult">
+                {comparison && Object.keys(comparison).length > 1 && (
+                  <ModelComparison comparison={comparison} />
+                )}
+
                 <div className="resultHeadline">
                   <div>
-                    <span>Highest model score</span>
+                    <span>
+                      Highest model score{result.model_version ? ` · model ${result.model_version}` : ""}
+                    </span>
                     <h3>{labels[result.top_class] ?? result.top_class}</h3>
                   </div>
                   <strong>{pct(result.confidence)}</strong>
@@ -1276,6 +1346,43 @@ function Sandbox({
         <code>/stress-test</code> endpoints. The synthetic sample is a drawing, not a real lesion.
       </p>
     </section>
+  );
+}
+
+function ModelComparison({ comparison }: { comparison: Record<string, Prediction> }) {
+  const entries = Object.entries(comparison);
+  const tops = new Set(entries.map(([, p]) => p.top_class));
+  const agree = tops.size === 1;
+  return (
+    <div className="comparePanel">
+      <span className="stepLabel">Same image, {entries.length} model versions</span>
+      <div className="compareGrid">
+        {entries.map(([version, p]) => {
+          const top3 = Object.entries(p.probabilities).sort((a, b) => b[1] - a[1]).slice(0, 3);
+          return (
+            <div key={version} className="compareCard">
+              <span className="mono">model {version}</span>
+              <strong>{p.demo_mode ? "Demo mode" : labels[p.top_class] ?? p.top_class}</strong>
+              <ul>
+                {top3.map(([key, value]) => (
+                  <li key={key}>
+                    <span>{labels[key] ?? key}</span>
+                    <b>{pct(value)}</b>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+      <p className={agree ? "compareNote" : "compareNote disagree"}>
+        {agree
+          ? "The versions agree on the top class."
+          : "The versions disagree on the top class: this image is a hard case for both, and a reason for extra caution."}{" "}
+        Their percentages are not directly comparable — each version is calibrated differently.
+      </p>
+      <span className="stepLabel">Details below: default model</span>
+    </div>
   );
 }
 
@@ -1529,8 +1636,67 @@ function ConfusionMatrix({ matrix, classes }: { matrix: number[][]; classes: str
   );
 }
 
+const COMPARE_ROWS: { label: string; get: (e: NonNullable<ResearchStatus["evaluation"]>) => number | null | undefined; lowerIsBetter?: boolean }[] = [
+  { label: "Melanoma caught (sensitivity)", get: (e) => e.per_class?.find((r) => r.label === "mel")?.sensitivity },
+  { label: "Melanoma specificity", get: (e) => e.per_class?.find((r) => r.label === "mel")?.specificity },
+  { label: "Balanced accuracy", get: (e) => e.balanced_accuracy },
+  { label: "Accuracy", get: (e) => e.accuracy },
+  { label: "Macro F1", get: (e) => e.macro_f1 },
+  { label: "Macro ROC-AUC", get: (e) => e.macro_ovr_roc_auc },
+  { label: "Calibration error", get: (e) => e.expected_calibration_error, lowerIsBetter: true },
+];
+
+function VersionComparison({ statuses }: { statuses: ModelStatus[] }) {
+  const evaluated = statuses.filter((m) => m.evaluation);
+  if (evaluated.length < 2) return null;
+  return (
+    <div className="versionCompare">
+      <span className="stepLabel">Versions side by side · held-out test</span>
+      <div className="confusionScroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Metric</th>
+              {evaluated.map((m) => (
+                <th scope="col" key={m.version}>{m.version}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {COMPARE_ROWS.map((row) => {
+              const values = evaluated.map((m) => row.get(m.evaluation!));
+              const numbers = values.filter((v): v is number => typeof v === "number");
+              const best = numbers.length > 1 ? (row.lowerIsBetter ? Math.min(...numbers) : Math.max(...numbers)) : null;
+              return (
+                <tr key={row.label}>
+                  <th scope="row">{row.label}</th>
+                  {values.map((v, i) => (
+                    <td key={evaluated[i].version} className={v === best ? "best" : undefined}>
+                      {typeof v === "number" ? (row.lowerIsBetter ? v.toFixed(2) : pct(v, 1)) : "—"}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="evalCaveat">
+        Bold marks the better value in each row (lower is better for calibration error). No version
+        wins everywhere: improving one number moved errors elsewhere.
+      </p>
+    </div>
+  );
+}
+
 function Evidence({ research }: { research: ResearchStatus | null }) {
-  const evaluation = research?.evaluation_available ? research.evaluation : null;
+  const statuses = (research?.models ?? []).filter((m) => m.model_loaded);
+  const [picked, setPicked] = useState<string | null>(null);
+  const current: ModelStatus | null =
+    statuses.find((m) => m.version === (picked ?? research?.default_model)) ??
+    statuses[0] ??
+    (research ? { ...research, version: research.model?.version ?? "" } : null);
+  const evaluation = current?.evaluation_available ? current.evaluation : null;
   const metrics: [string, number | null | undefined][] = [
     ["Accuracy", evaluation?.accuracy],
     ["Balanced accuracy", evaluation?.balanced_accuracy],
@@ -1560,14 +1726,33 @@ function Evidence({ research }: { research: ResearchStatus | null }) {
               {evaluation ? "Available" : "Pending training"}
             </span>
           </div>
-          {research?.model_loaded && research.model && (
+          <VersionComparison statuses={statuses} />
+          {statuses.length > 1 && (
+            <div className="modelPicker">
+              <span className="stepLabel" id="evidence-version-label">Details for</span>
+              <span className="viewToggle" role="group" aria-labelledby="evidence-version-label">
+                {statuses.map((m) => (
+                  <button
+                    key={m.version}
+                    aria-pressed={current?.version === m.version}
+                    className={current?.version === m.version ? "active" : ""}
+                    onClick={() => setPicked(m.version)}
+                  >
+                    {m.version}
+                    {m.version === research?.default_model ? " (default)" : ""}
+                  </button>
+                ))}
+              </span>
+            </div>
+          )}
+          {current?.model_loaded && current.model && (
             <p className="modelLine">
-              Model {research.model.version ?? "(unlabelled)"} · EfficientNet-B0 ·{" "}
-              {research.model.tta ? "4-view averaged" : "single view"} ·{" "}
-              {research.model.calibrated
+              Model {current.model.version ?? "(unlabelled)"} · EfficientNet-B0 ·{" "}
+              {current.model.tta ? "4-view averaged" : "single view"} ·{" "}
+              {current.model.calibrated
                 ? `tuned on validation${
-                    research.model.min_mel_sensitivity_target
-                      ? ` (melanoma floor ${pct(research.model.min_mel_sensitivity_target)})`
+                    current.model.min_mel_sensitivity_target
+                      ? ` (melanoma floor ${pct(current.model.min_mel_sensitivity_target)})`
                       : ""
                   }`
                 : "not tuned"}
@@ -1649,8 +1834,8 @@ function Evidence({ research }: { research: ResearchStatus | null }) {
                 <ConfusionMatrix matrix={evaluation.confusion_matrix} classes={evaluation.classes} />
               )}
 
-              {research?.training && research.training.length > 1 && (
-                <TrainingCurve rows={research.training} />
+              {current?.training && current.training.length > 1 && (
+                <TrainingCurve rows={current.training} />
               )}
             </>
           )}

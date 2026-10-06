@@ -20,14 +20,21 @@ log = logging.getLogger("dermalens.weights")
 
 
 def ensure_file(path: Path, url_env: str, sha256_env: str | None = None) -> None:
+    """Download `path` from the URL in env var `url_env` if it is missing."""
     url = os.getenv(url_env, "").strip()
+    expected = os.getenv(sha256_env, "").strip().lower() if sha256_env else ""
+    download(url, path, expected)
+
+
+def download(url: str, path: Path, expected_sha256: str = "") -> None:
+    """Fetch `url` into `path` unless it already exists. https only."""
     if path.exists() or not url:
         return
     # https only; local file:// sources only when explicitly enabled (tests,
     # local container checks).
     allowed = ("https://", "file://") if os.getenv("DERMALENS_ALLOW_FILE_URLS") == "1" else ("https://",)
     if not url.startswith(allowed):
-        raise RuntimeError(f"{url_env} must be an https:// URL")
+        raise RuntimeError(f"model download URL must be https:// (got {url[:40]})")
 
     path.parent.mkdir(parents=True, exist_ok=True)
     log.info("Downloading %s from %s", path.name, url)
@@ -36,7 +43,7 @@ def ensure_file(path: Path, url_env: str, sha256_env: str | None = None) -> None
             shutil.copyfileobj(response, tmp)
         tmp_path = Path(tmp.name)
 
-    expected = os.getenv(sha256_env, "").strip().lower() if sha256_env else ""
+    expected = expected_sha256
     if expected:
         actual = hashlib.sha256(tmp_path.read_bytes()).hexdigest()
         if actual != expected:

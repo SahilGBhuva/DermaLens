@@ -30,7 +30,8 @@ Say: "Grad-CAM shows which regions pushed the model's score. Here it's raised in
 2. Read the **full distribution**, not just the top class.
 3. Toggle **Original / Grad-CAM** on the real overlay.
 4. Read the **How to read this** box aloud: score band, close calls, and the model's real melanoma miss rate.
-5. Say clearly: "This is not a diagnosis."
+5. Switch to **Compare both** and analyze again: show where v1 and v2 agree or disagree on the same image.
+6. Say clearly: "This is not a diagnosis."
 
 ### 1:35–2:05 — Robustness
 
@@ -42,6 +43,7 @@ Click **Run stress test**. The same image is re-scored darker, brighter, lower c
 
 Scroll to **Evidence**:
 
+- **Versions side by side**: v2 catches more melanomas; v1 wins every other row. Use the version tabs to show each one's details.
 - The headline scores and the **held-out test set size**.
 - **Where the mistakes go**: point at the melanoma row — "most missed melanomas were called ordinary moles."
 - **How training went**: point at the gap between training and validation — "that's overfitting; I keep the epoch that did best on validation."

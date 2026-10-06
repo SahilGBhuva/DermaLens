@@ -1018,6 +1018,30 @@ h1 em, h2 em, h3 em { color: var(--blue); }
   white-space: nowrap;
 }
 
+.modelPicker { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+.modelPicker .viewToggle { flex-wrap: wrap; padding: 4px; border-radius: 12px; background: var(--paper-soft); }
+.modelPicker .viewToggle button { height: 40px; padding: 0 14px; border-radius: 9px; font-size: 14px; }
+.modelPicker + .analyzeButton { margin-top: 0; }
+
+.comparePanel { display: flex; flex-direction: column; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.compareGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.compareCard {
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.compareCard .mono { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--subtle); }
+.compareCard strong { font-family: var(--serif); font-weight: 400; font-size: 26px; line-height: 1.05; }
+.compareCard ul { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.compareCard li { display: flex; justify-content: space-between; gap: 8px; }
+.compareCard b { font-family: var(--mono); font-weight: 400; color: var(--ink); }
+.compareNote { margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
+.compareNote.disagree { padding: 10px 12px; border-radius: 12px; background: #fbf7ee; border: 1px solid #ecdcb8; color: #4a3d22; }
+
 .analyzeButton {
   margin-top: auto;
   height: 58px;
@@ -1341,6 +1365,16 @@ h1 em, h2 em, h3 em { color: var(--blue); }
   color: var(--muted);
 }
 .evalMeta b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+
+.versionCompare { display: flex; flex-direction: column; gap: 10px; }
+.versionCompare table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.versionCompare th, .versionCompare td { padding: 10px 8px; border-bottom: 1px solid var(--line); text-align: right; }
+.versionCompare th[scope="row"], .versionCompare thead th:first-child { text-align: left; font-weight: 500; color: var(--muted); }
+.versionCompare thead th { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--subtle); text-transform: uppercase; }
+.versionCompare td { font-family: var(--mono); color: var(--muted); }
+.versionCompare td.best { color: var(--ink); font-weight: 700; }
+.versionCompare tbody tr:first-child th { color: var(--blue); font-weight: 600; }
+.statusPanel .modelPicker { margin-top: 0; }
 
 .modelLine { margin: -8px 0 0; font-family: var(--mono); font-size: 12px; color: var(--subtle); }
 

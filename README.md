@@ -28,7 +28,7 @@ cd backend && CORS_ORIGINS=http://localhost:3210 uvicorn app.main:app --port 876
 cd frontend && npm install && NEXT_PUBLIC_API_URL=http://127.0.0.1:8765 npm run dev -- -p 3210
 ```
 
-Put trained files in `models/` (or install them with `python ml/install_model.py --from ~/Downloads`); without them the API runs in a clearly labelled demo mode.
+Each trained model lives in its own folder (`models/v1/`, `models/v2/`) and the API serves all of them: the sandbox can switch versions or **compare them on the same image**, and the Evidence page shows them side by side. Install a new one with `python ml/install_model.py --from ~/Downloads --version v3`. With no models the API runs in a clearly labelled demo mode.
 
 ## What is implemented
 

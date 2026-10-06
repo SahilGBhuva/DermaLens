@@ -2,16 +2,19 @@
 
 Picks the newest copy of each artifact in the source folder (browsers add
 " (1)" to repeated downloads), checks that weights, settings and evaluation
-all belong together by SHA-256, backs up the currently installed model, then
-copies the new one in and prints a before/after comparison.
+all belong together by SHA-256, then installs them into models/<version>/
+(moving any existing copy of that version to models/.backups/) and prints a
+comparison with every installed version. The API serves each folder.
 
-    python ml/install_model.py --from ~/Downloads --version v2
+    python ml/install_model.py --from ~/Downloads --version v3
 """
 
 import argparse
 import json
+import re
 import shutil
 import sys
+import time
 from pathlib import Path
 
 from model import CLASSES, sha256
@@ -76,48 +79,46 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--from", dest="source", default=str(Path.home() / "Downloads"))
     parser.add_argument("--to", dest="target", default="models")
-    parser.add_argument("--version", default=None, help="label stored in model_config.json, e.g. v2")
+    parser.add_argument("--version", required=True, help="folder/label for this model, e.g. v3")
     args = parser.parse_args()
 
-    source, target = Path(args.source).expanduser(), Path(args.target)
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,31}", args.version):
+        raise SystemExit("--version must be letters, digits, '.', '_' or '-' (e.g. v3)")
+
+    source, models_dir = Path(args.source).expanduser(), Path(args.target)
     found = find_artifacts(source)
     for key, path in found.items():
         print(f"{key:10s} {path}" if path else f"{key:10s} (not found, optional)")
     config, evaluation, weights_hash = verify(found)
     print(f"\nchecks passed: weights sha256 {weights_hash}")
 
-    previous = None
-    if (target / "evaluation.json").exists():
-        previous = json.loads((target / "evaluation.json").read_text())
-    if (target / ARTIFACTS["weights"][2]).exists():
-        old_config = target / "model_config.json"
-        label = json.loads(old_config.read_text()).get("version", "previous") if old_config.exists() else "previous"
-        backup = target / "previous" / label
-        backup.mkdir(parents=True, exist_ok=True)
-        for _, _, name in ARTIFACTS.values():
-            if (target / name).exists():
-                shutil.copy2(target / name, backup / name)
-        print(f"backed up current model to {backup}")
+    target = models_dir / args.version
+    if target.exists():
+        # Hidden folder: the API only serves folders whose names start with a letter or digit.
+        backup = models_dir / ".backups" / f"{args.version}-{time.strftime('%Y%m%d-%H%M%S')}"
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(target), str(backup))
+        print(f"moved the existing {args.version} to {backup}")
 
-    target.mkdir(parents=True, exist_ok=True)
+    target.mkdir(parents=True)
     shutil.copy2(found["weights"], target / ARTIFACTS["weights"][2])
     shutil.copy2(found["evaluation"], target / ARTIFACTS["evaluation"][2])
     if found["history"]:
         shutil.copy2(found["history"], target / ARTIFACTS["history"][2])
-    if args.version:
-        config["version"] = args.version
+    config["version"] = args.version
     # Lets the API confirm the published evaluation file is the one installed here.
     config["evaluation_sha256"] = sha256(target / ARTIFACTS["evaluation"][2])
     (target / "model_config.json").write_text(json.dumps(config, indent=2))
     print(f"installed into {target}/")
 
-    new = summary(evaluation)
-    old = summary(previous) if previous else {}
-    print(f"\n{'held-out test':30s} {'before':>8s} {'after':>8s}")
-    for key, value in new.items():
-        before = old.get(key)
-        fmt = lambda v: "—" if v is None else f"{v:.3f}"
-        print(f"{key:30s} {fmt(before):>8s} {fmt(value):>8s}")
+    columns = {}
+    for folder in sorted(p for p in models_dir.iterdir() if p.is_dir() and not p.name.startswith(".")):
+        if (folder / "evaluation.json").exists():
+            columns[folder.name] = summary(json.loads((folder / "evaluation.json").read_text()))
+    fmt = lambda v: "—" if v is None else f"{v:.3f}"
+    print(f"\n{'held-out test':30s}" + "".join(f"{name:>9s}" for name in columns))
+    for key in summary(evaluation):
+        print(f"{key:30s}" + "".join(f"{fmt(row.get(key)):>9s}" for row in columns.values()))
     return 0
 
 

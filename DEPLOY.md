@@ -19,34 +19,39 @@ Everything below runs in the cloud on free plans. Your computer only needs a bro
 To use the new model locally first, install it from your Downloads folder. This checks that the weights, settings and evaluation belong together, backs up the current model to `models/previous/`, and prints a before/after comparison:
 
 ```bash
-python ml/install_model.py --from ~/Downloads --version v2
+python ml/install_model.py --from ~/Downloads --version v3
 ```
 
 ## 2. Publish the trained files
 
-On GitHub: **Releases → Draft a new release**, tag `model-v1`, attach `dermalens_efficientnet_b0.pt`, `model_config.json`, `evaluation.json` and `training_history.json`, publish.
+Each model version is one GitHub Release holding its four files, taken from that version's folder in `models/` (after `ml/install_model.py`, which adds the version label and evaluation fingerprint to `model_config.json`):
 
-`model_config.json` tells the API how the model was tested (preprocessing, flip-averaging, calibration) and holds the weights' SHA-256; the API refuses weights that don't match it.
+| Release tag | Files (from) |
+|---|---|
+| `model-v1` | `models/v1/`: `dermalens_efficientnet_b0.pt`, `model_config.json`, `evaluation.json`, `training_history.json` |
+| `model-v2` | `models/v2/`: same four files |
 
-Each attached file then has a direct link like:
+On GitHub: **Releases → Draft a new release**, set the tag, attach the four files, and note in the description that the weights were trained on HAM10000 (CC BY-NC 4.0; Tschandl, Rosendahl & Kittler, 2018). Or from a terminal:
 
+```bash
+gh release create model-v2 models/v2/* --title "DermaLens model v2" --notes "Trained on HAM10000 (CC BY-NC 4.0)."
+gh release create model-v1 models/v1/* --title "DermaLens model v1" --notes "Trained on HAM10000 (CC BY-NC 4.0)."
 ```
-https://github.com/SahilGBhuva/DermaLens/releases/download/model-v1/dermalens_efficientnet_b0.pt
-```
+
+`model_config.json` holds each model's SHA-256; the API refuses weights that don't match it, and only publishes metrics measured on those exact weights.
 
 ## 3. Deploy the API on Render
 
 1. https://render.com → sign in with GitHub → **New → Blueprint** → choose this repo. Render reads `render.yaml`.
 2. Fill the environment variables it asks for:
-   - `MODEL_URL` — the `.pt` release link from step 2
-   - `CONFIG_URL` — the `model_config.json` release link
-   - `EVALUATION_URL` — the `evaluation.json` release link
-   - optionally `HISTORY_URL` — the `training_history.json` release link (shows the training curve)
+   - `MODEL_RELEASES` — every version to serve, **default first**:
+     `v2=https://github.com/SahilGBhuva/DermaLens/releases/download/model-v2,v1=https://github.com/SahilGBhuva/DermaLens/releases/download/model-v1`
    - `CORS_ORIGINS` — your Vercel address from step 4 (you can come back and set it after)
-   - optionally `MODEL_SHA256` — the hash Colab printed, so a corrupted download is refused
-3. Deploy. When it is live, open `https://<your-api>.onrender.com/health` — it should show `"model_loaded": true`.
+3. Deploy. When it is live, open `https://<your-api>.onrender.com/health` — it should list `"models": ["v2", "v1"]`.
 
-If the free instance runs out of memory loading PyTorch, switch the service to the Starter plan or host the API on a Hugging Face Docker Space instead.
+Memory: with both versions, local CPU measurements peaked around 470 MB under 12 concurrent requests (free limit 512 MB; one analysis runs at a time). If the free instance is ever OOM-killed, serve one version (`MODEL_RELEASES=v2=...`) or move to the Starter plan.
+
+Single-model deployments can still use `MODEL_URL`, `CONFIG_URL`, `EVALUATION_URL` and `HISTORY_URL` instead.
 
 ## 4. Deploy the website on Vercel
 
