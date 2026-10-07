@@ -61,6 +61,13 @@ const labels: Record<string, string> = {
 };
 
 // ISIC_0016128 from the ISIC Archive (CC0), served locally.
+const imageTypesByExtension: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
 const LESION_IMAGE = "/images/isic-0016128.webp";
 // Real Grad-CAM attention maps from DermaLens v2 and v1 on the CC0 sample image
 // ISIC_0016128 (generated locally, see frontend/public/images).
@@ -119,6 +126,7 @@ export default function Home() {
   const [imageType, setImageType] = useState<"dermoscopy" | "photo">("dermoscopy");
   const storyRef = useRef<HTMLElement | null>(null);
   const heroFileRef = useRef<HTMLInputElement | null>(null);
+  const dragDepth = useRef(0);
 
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
 
@@ -144,6 +152,30 @@ export default function Home() {
       if (preview) URL.revokeObjectURL(preview);
     };
   }, [preview]);
+
+  useEffect(() => {
+    // A file dropped anywhere on the page goes to the sandbox, instead of the
+    // browser leaving the site to open the image.
+    const hasFiles = (event: globalThis.DragEvent) => event.dataTransfer?.types.includes("Files");
+    function onWindowDragOver(event: globalThis.DragEvent) {
+      if (hasFiles(event)) event.preventDefault();
+    }
+    function onWindowDrop(event: globalThis.DragEvent) {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      const dropped = event.dataTransfer?.files?.[0];
+      if (!dropped) return;
+      chooseFile(dropped);
+      document.getElementById("sandbox")?.scrollIntoView({ behavior: "smooth" });
+    }
+    window.addEventListener("dragover", onWindowDragOver);
+    window.addEventListener("drop", onWindowDrop);
+    return () => {
+      window.removeEventListener("dragover", onWindowDragOver);
+      window.removeEventListener("drop", onWindowDrop);
+    };
+    // chooseFile only calls state setters, so the first render's copy is safe to keep.
+  }, []);
 
   useEffect(() => {
     function updateStory() {
@@ -177,9 +209,17 @@ export default function Home() {
 
   function chooseFile(nextFile: File | null) {
     if (nextFile) {
-      const allowed = ["image/jpeg", "image/png", "image/webp"];
-      if (!allowed.includes(nextFile.type)) {
-        setError("Choose a JPEG, PNG, or WebP image.");
+      // Some apps hand over files with no MIME type; fall back to the extension.
+      const extension = nextFile.name.split(".").pop()?.toLowerCase() ?? "";
+      if (!nextFile.type && imageTypesByExtension[extension]) {
+        nextFile = new File([nextFile], nextFile.name, { type: imageTypesByExtension[extension] });
+      }
+      if (!Object.values(imageTypesByExtension).includes(nextFile.type)) {
+        setError(
+          extension === "heic" || extension === "heif" || nextFile.type.includes("hei")
+            ? "iPhone HEIC photos aren't supported. Export it as JPEG (Photos → File → Export) and try again."
+            : "Choose a JPEG, PNG, or WebP image.",
+        );
         return;
       }
       if (nextFile.size > 10 * 1024 * 1024) {
@@ -261,11 +301,29 @@ export default function Home() {
     }
   }
 
+  function onDragEnter(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    dragDepth.current += 1;
+    setDragging(true);
+  }
+
+  function onDragLeave() {
+    // Moving over the preview image fires leave/enter pairs; only clear on the real exit.
+    dragDepth.current = Math.max(dragDepth.current - 1, 0);
+    if (dragDepth.current === 0) setDragging(false);
+  }
+
   function onDrop(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault();
+    event.stopPropagation();
+    dragDepth.current = 0;
     setDragging(false);
     const dropped = event.dataTransfer.files?.[0] ?? null;
     if (dropped) chooseFile(dropped);
+    else
+      setError(
+        "That drag carried a link, not a file. Save the image to your computer first, then drag it in, or click the box to choose it.",
+      );
   }
 
   async function analyze() {
@@ -691,8 +749,8 @@ export default function Home() {
               <div className="sandboxLabel">01 / Input</div>
               <label
                 className={dragging ? "uploadDrop dragging" : "uploadDrop"}
-                onDragEnter={() => setDragging(true)}
-                onDragLeave={() => setDragging(false)}
+                onDragEnter={onDragEnter}
+                onDragLeave={onDragLeave}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={onDrop}
               >

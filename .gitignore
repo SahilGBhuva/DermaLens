@@ -25,3 +25,4 @@ models/*.json
 
 # Everything under models/ (weights, metadata, backups) travels via GitHub Releases
 models/
+test-images/
