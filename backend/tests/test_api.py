@@ -78,3 +78,58 @@ def test_rejects_tiny_image():
         files={"file": ("tiny.png", buffer.getvalue(), "image/png")},
     )
     assert response.status_code == 400
+
+
+def test_research_status_reports_every_version(two_versions, monkeypatch):
+    from app import main
+    from app.registry import ModelRegistry
+
+    monkeypatch.setattr(main, "registry", ModelRegistry(two_versions))
+    body = client.get("/research-status").json()
+    assert body["default_model"] == "v2"
+    assert [m["version"] for m in body["models"]] == ["v2", "v1"]
+    assert body["evaluation"]["balanced_accuracy"] == 0.73  # top level = default
+    v1 = body["models"][1]
+    assert v1["evaluation"]["balanced_accuracy"] == 0.74
+    assert v1["evaluation"]["test_images"] == 8
+    assert v1["evaluation"]["confusion_matrix"] == [[3, 1], [0, 4]]
+    assert v1["evaluation"]["per_class"][0] == {"label": "mel", "sensitivity": 0.75, "specificity": 1.0, "support": 4}
+    assert [row["epoch"] for row in v1["training"]] == [1, 2]
+    assert "val_loss" not in v1["training"][0]
+
+
+def test_predict_uses_requested_version(two_versions, monkeypatch):
+    from app import main
+    from app.registry import ModelRegistry
+
+    monkeypatch.setattr(main, "registry", ModelRegistry(two_versions))
+    files = {"file": ("lesion.png", make_png(), "image/png")}
+    assert client.post("/predict", files=files).json()["model_version"] == "v2"
+    assert client.post("/predict?model=v1", files=files).json()["model_version"] == "v1"
+    assert client.post("/stress-test?model=v1", files=files).json()["model_version"] == "v1"
+    missing = client.post("/predict?model=v9", files=files)
+    assert missing.status_code == 404 and "v2, v1" in missing.json()["detail"]
+    assert client.get("/health").json()["models"] == ["v2", "v1"]
+
+
+def test_metrics_hidden_when_measured_on_other_weights(tmp_path, monkeypatch):
+    from app import main
+    from app.registry import ModelRegistry
+    from conftest import make_version
+
+    make_version(tmp_path / "models" / "v1", evaluation_for_other_weights=True)
+    monkeypatch.setattr(main, "registry", ModelRegistry(tmp_path / "models"))
+    body = client.get("/research-status").json()
+    assert body["model_loaded"] is True
+    assert body["evaluation_available"] is False and body["evaluation"] is None
+
+
+def test_no_models_means_demo_and_no_metrics(tmp_path, monkeypatch):
+    from app import main
+    from app.registry import ModelRegistry
+
+    monkeypatch.setattr(main, "registry", ModelRegistry(tmp_path / "empty"))
+    body = client.get("/research-status").json()
+    assert body["model_loaded"] is False and body["training"] is None and body["evaluation"] is None
+    files = {"file": ("lesion.png", make_png(), "image/png")}
+    assert client.post("/predict", files=files).json()["demo_mode"] is True

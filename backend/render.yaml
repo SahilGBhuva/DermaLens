@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: dermalens-api
-    runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    healthCheckPath: /health
-    envVars:
-      - key: CORS_ORIGINS
-        value: http://localhost:3000

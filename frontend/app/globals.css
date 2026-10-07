@@ -1026,7 +1026,7 @@ main {
   padding: 22px;
   display: flex;
   justify-content: space-between;
-  align-items: end;
+  align-items: flex-end;
   border-radius: 18px;
   background: linear-gradient(140deg, #e1ecf9, #d7e5f5);
 }

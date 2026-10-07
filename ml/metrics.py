@@ -69,13 +69,18 @@ def summarize_metrics(y_true, probabilities, class_names):
     y_true = np.asarray(y_true)
     probabilities = np.asarray(probabilities)
     y_pred = probabilities.argmax(axis=1)
-    confusion = confusion_matrix(y_true, y_pred)
+    # Pin every class so the matrix stays 7x7 even when a rare class is absent
+    # from the split; otherwise per-class rows would shift out of alignment.
+    labels = list(range(len(class_names)))
+    confusion = confusion_matrix(y_true, y_pred, labels=labels)
 
     metrics = {
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
-        "macro_f1": float(f1_score(y_true, y_pred, average="macro")),
-        "weighted_f1": float(f1_score(y_true, y_pred, average="weighted")),
+        "macro_f1": float(f1_score(y_true, y_pred, labels=labels, average="macro", zero_division=0)),
+        "weighted_f1": float(
+            f1_score(y_true, y_pred, labels=labels, average="weighted", zero_division=0)
+        ),
         "expected_calibration_error": expected_calibration_error(y_true, probabilities),
         "multiclass_brier_score": multiclass_brier_score(
             y_true, probabilities, len(class_names)
@@ -87,22 +92,27 @@ def summarize_metrics(y_true, probabilities, class_names):
         "classification_report": classification_report(
             y_true,
             y_pred,
+            labels=labels,
             target_names=class_names,
             output_dict=True,
             zero_division=0,
         ),
     }
 
+    # ROC-AUC is undefined when a class is missing from the split. Newer
+    # scikit-learn returns NaN instead of raising; store None either way,
+    # because NaN is not valid JSON and the API cannot serve it.
     try:
-        metrics["macro_ovr_roc_auc"] = float(
+        auc = float(
             roc_auc_score(
                 y_true,
                 probabilities,
                 multi_class="ovr",
                 average="macro",
-                labels=list(range(len(class_names))),
+                labels=labels,
             )
         )
+        metrics["macro_ovr_roc_auc"] = auc if np.isfinite(auc) else None
     except ValueError:
         metrics["macro_ovr_roc_auc"] = None
 

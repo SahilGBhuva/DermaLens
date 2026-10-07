@@ -57,10 +57,12 @@ const labels: Record<string, string> = {
   vasc: "Vascular lesion",
 };
 
-const LESION_IMAGE =
-  "https://isic-archive.s3.amazonaws.com/images/ISIC_0016128.jpg";
-const LAB_IMAGE =
-  "https://cdn2.picryl.com/photo/2008/07/24/researcher-looks-through-microscope-2-bfc551-1024.jpg";
+// ISIC_0016128 from the ISIC Archive (CC0), served locally.
+const LESION_IMAGE = "/images/isic-0016128.jpg";
+// Real Grad-CAM attention maps from DermaLens v2 and v1 on the CC0 sample image
+// ISIC_0016128 (generated locally, see frontend/public/images).
+const ATTENTION_V2_IMAGE = "/images/attention-v2.jpg";
+const ATTENTION_V1_IMAGE = "/images/attention-v1.jpg";
 
 const story = [
   {
@@ -394,7 +396,7 @@ export default function Home() {
 
           <article className="railCard labCard">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LAB_IMAGE} alt="" />
+            <img src={ATTENTION_V2_IMAGE} alt="" />
           </article>
 
           <article className="railCard manifestoCard">
@@ -417,7 +419,7 @@ export default function Home() {
 
           <article className="railCard labCard secondaryLabCard">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LAB_IMAGE} alt="" />
+            <img src={ATTENTION_V1_IMAGE} alt="" />
           </article>
 
           <article className="railCard searchCard">

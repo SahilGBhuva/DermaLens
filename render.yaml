@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: dermalens-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      # Render's proxy appends the real client IP to X-Forwarded-For (rate limiting)
+      - key: TRUST_PROXY_HEADERS
+        value: "1"
+      # Your Vercel site address, e.g. https://dermalens.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+      # Model versions to serve, each a GitHub Release folder, default first:
+      # v2=https://github.com/<you>/DermaLens/releases/download/model-v2,v1=https://github.com/<you>/DermaLens/releases/download/model-v1
+      - key: MODEL_RELEASES
+        sync: false
