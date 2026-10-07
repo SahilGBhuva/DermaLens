@@ -4,6 +4,8 @@ DermaLens is an educational/research web app for experimenting with machine-lear
 
 > **Important:** DermaLens is not a medical device and does not diagnose cancer. Its outputs are for education and model research only.
 
+**Live demo:** https://derma-lens-nine.vercel.app (the free API sleeps when idle — the first analysis can take about a minute to wake it).
+
 ## At a glance
 
 - **What it does:** upload a dermatoscopic image → see all seven class probabilities, a Grad-CAM attention overlay, and whether the answer survives darker, brighter, lower-contrast and blurred versions of the same photo.
