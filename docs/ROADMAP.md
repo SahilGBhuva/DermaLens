@@ -4,10 +4,10 @@ DermaLens is a long-term research project. Each stage below is meant to produce 
 
 ## Done
 
-- **Explainable research app:** probability distribution, Grad-CAM, stress test, illustrative 3D attention view, honest evidence page. Security-hardened and accessibility-audited.
+- **Explainable research app:** probability distribution, Grad-CAM, stress test, research export, honest evidence page. Security-hardened API.
 - **v1:** EfficientNet-B0 baseline. Balanced accuracy 0.741, melanoma sensitivity 0.64, well calibrated (ECE 0.05).
 - **v2:** validation-tuned for melanoma. Melanoma sensitivity 0.78, but more false alarms, lower sensitivity for two other cancers, and poor calibration (ECE 0.32). Reproducible: two runs gave byte-identical weights.
-- **Both versions served side by side**, with in-app comparison on the same image.
+- **Both versions served by the API** (`?model=v1` / `v2`); the website uses v2. A version switch or side-by-side comparison in the interface is a possible next step.
 
 ## Next stages, in order
 

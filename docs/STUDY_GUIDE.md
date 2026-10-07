@@ -130,7 +130,7 @@ Because invented metrics would mislead people. Scores only appear when a real te
 
 ## 7. How the app is built
 
-- **Frontend:** Next.js and React website, with a three.js 3D view.
+- **Frontend:** Next.js and React website.
 - **Backend:** a FastAPI (Python) server that loads the PyTorch model and returns probabilities, a Grad-CAM image and stress-test results.
 - **Training:** Python scripts run in Google Colab on a free GPU.
 - **Safety checks:** the model's settings file carries a fingerprint (SHA-256) of the model; the server refuses mismatched files.

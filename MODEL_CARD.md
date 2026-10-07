@@ -69,7 +69,7 @@ Grad-CAM is computed on the final convolutional block for the highest-scoring cl
 
 ## Illustrative content in the interface
 
-The hero, the "how it works" walkthrough, the 3D attention landscape and the robustness lab use a synthetic, hand-drawn lesion and fixed example numbers so the site can explain itself without patient images. They are labelled "illustrative" or "simulated" and are not model output. Only the sandbox and the evidence section show real API results.
+The hero gallery and the scroll story use one public-domain dermoscopy image (ISIC_0016128, CC0) and fixed example numbers so the site can explain itself; the "87%" score card is labelled "example interface". Two gallery cards are real Grad-CAM outputs of v2 and v1 on that image, generated offline (v2 called it melanoma at 0.64, v1 called it a nevus at 0.54; the ISIC record lists it as malignant). Only the sandbox and the evidence section show live API results.
 
 ## Results — v1 (2026-10-01)
 

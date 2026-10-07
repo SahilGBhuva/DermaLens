@@ -12,7 +12,7 @@ DermaLens is an educational/research web app for experimenting with machine-lear
   - v1: accuracy 0.801 · balanced accuracy 0.741 · **melanoma sensitivity 0.64** · calibration error 0.05
   - v2: accuracy 0.785 · balanced accuracy 0.733 · **melanoma sensitivity 0.78** · calibration error 0.32 — catches 26 more melanomas, at the cost of more false alarms, lower sensitivity for two other cancers, and poorly calibrated percentages. The trade-off is analysed in [`MODEL_CARD.md`](MODEL_CARD.md).
 - **Honesty by design:** metrics are only shown for the exact model file being served (SHA-256 checked); illustrative sections are labelled; every result says it is not a diagnosis.
-- **Quality:** 35 automated tests; Lighthouse performance 98, accessibility 100, best practices 100, SEO 100; API load-tested inside a 512 MB container.
+- **Quality:** 38 API tests and 11 ML tests; security-hardened API (see [`SECURITY.md`](SECURITY.md)), load-tested inside a 512 MB container.
 - **Docs:** [`DEPLOY.md`](DEPLOY.md) (cloud setup) · [`SECURITY.md`](SECURITY.md) · [`docs/DEMO.md`](docs/DEMO.md) (demo script) · [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/STUDY_GUIDE.md`](docs/STUDY_GUIDE.md).
 
 ### Run it locally
@@ -28,11 +28,11 @@ cd backend && CORS_ORIGINS=http://localhost:3210 uvicorn app.main:app --port 876
 cd frontend && npm install && NEXT_PUBLIC_API_URL=http://127.0.0.1:8765 npm run dev -- -p 3210
 ```
 
-Each trained model lives in its own folder (`models/v1/`, `models/v2/`) and the API serves all of them: the sandbox can switch versions or **compare them on the same image**, and the Evidence page shows them side by side. Install a new one with `python ml/install_model.py --from ~/Downloads --version v3`. With no models the API runs in a clearly labelled demo mode.
+Each trained model lives in its own folder (`models/v1/`, `models/v2/`) and the API serves all of them; the website uses the default (v2), and any version can be requested directly (`/predict?model=v1`). Install a new one with `python ml/install_model.py --from ~/Downloads --version v3`. With no models the API runs in a clearly labelled demo mode.
 
 ## What is implemented
 
-- Next.js site with an interactive scope hero, a four-step "how it works" walkthrough, a 3D "attention landscape" (three.js, loaded only when scrolled into view), a robustness lab, and an evidence page that only shows real held-out metrics, including per-class sensitivity once an evaluation exists
+- Next.js site: an image-gallery hero (including real Grad-CAM maps from v1 and v2 on a CC0 ISIC image), a scroll story, a methodology section, and an evidence section that only shows real held-out metrics
 - sandbox wired to the API: upload an image (or a clearly labelled synthetic sample), read all seven probabilities, toggle the Grad-CAM overlay, and run the stress test
 - FastAPI + PyTorch inference API
 - EfficientNet-B0 transfer-learning pipeline

@@ -15,7 +15,7 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "cd backend && CORS_ORIGINS=http://localhost:3210,http://127.0.0.1:3210,http://localhost:3000 ../.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8765"
+        "cd backend && CORS_ORIGINS=http://localhost:3210,http://127.0.0.1:3210,http://localhost:3220,http://localhost:3000 ../.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8765"
       ],
       "port": 8765
     }
