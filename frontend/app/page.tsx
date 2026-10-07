@@ -58,11 +58,11 @@ const labels: Record<string, string> = {
 };
 
 // ISIC_0016128 from the ISIC Archive (CC0), served locally.
-const LESION_IMAGE = "/images/isic-0016128.jpg";
+const LESION_IMAGE = "/images/isic-0016128.webp";
 // Real Grad-CAM attention maps from DermaLens v2 and v1 on the CC0 sample image
 // ISIC_0016128 (generated locally, see frontend/public/images).
-const ATTENTION_V2_IMAGE = "/images/attention-v2.jpg";
-const ATTENTION_V1_IMAGE = "/images/attention-v1.jpg";
+const ATTENTION_V2_IMAGE = "/images/attention-v2.webp";
+const ATTENTION_V1_IMAGE = "/images/attention-v1.webp";
 
 const story = [
   {
@@ -329,8 +329,8 @@ export default function Home() {
       </div>
 
       <nav className="floatingNav">
-        <a className="brand" href="#top" aria-label="DermaLens home">
-          <span className="brandIcon">D</span>
+        <a className="brand" href="#top">
+          <span className="brandIcon" aria-hidden="true">D</span>
           <span>DermaLens</span>
         </a>
 
@@ -362,7 +362,7 @@ export default function Home() {
         <div className="visualRail fullBleed" aria-label="DermaLens capabilities">
           <article className="railCard imageCard">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LESION_IMAGE} alt="" />
+            <img decoding="async" src={LESION_IMAGE} alt="" />
           </article>
 
           <article className="railCard riskCard">
@@ -375,7 +375,7 @@ export default function Home() {
           <article className="railCard heatCard">
             <div className="fakeHeat">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={LESION_IMAGE} alt="" />
+              <img decoding="async" src={LESION_IMAGE} alt="" />
               <div className="heatBlob heatBlobOne" />
               <div className="heatBlob heatBlobTwo" />
             </div>
@@ -388,7 +388,7 @@ export default function Home() {
               {[0, 1, 2].map((item) => (
                 <div key={item}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={LESION_IMAGE} alt="" />
+                  <img decoding="async" src={LESION_IMAGE} alt="" />
                 </div>
               ))}
             </div>
@@ -396,7 +396,7 @@ export default function Home() {
 
           <article className="railCard labCard">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ATTENTION_V2_IMAGE} alt="" />
+            <img decoding="async" src={ATTENTION_V2_IMAGE} alt="" />
           </article>
 
           <article className="railCard manifestoCard">
@@ -419,7 +419,7 @@ export default function Home() {
 
           <article className="railCard labCard secondaryLabCard">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ATTENTION_V1_IMAGE} alt="" />
+            <img decoding="async" src={ATTENTION_V1_IMAGE} alt="" />
           </article>
 
           <article className="railCard searchCard">
@@ -464,7 +464,7 @@ export default function Home() {
 
           <article className="railCard imageCard secondLesionCard">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LESION_IMAGE} alt="" />
+            <img decoding="async" src={LESION_IMAGE} alt="" />
             <span>Attention ≠ diagnosis</span>
           </article>
         </div>
@@ -563,7 +563,7 @@ export default function Home() {
                 <div className="analyzeMock">
                   <div className="mockImage">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={LESION_IMAGE} alt="" />
+                    <img decoding="async" loading="lazy" src={LESION_IMAGE} alt="" />
                   </div>
                   <div className="mockPrediction">
                     <span>Prediction</span>
@@ -583,7 +583,7 @@ export default function Home() {
                 <div className="attentionMock">
                   <div className="attentionPhoto">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={LESION_IMAGE} alt="" />
+                    <img decoding="async" loading="lazy" src={LESION_IMAGE} alt="" />
                     <div className="heatBlob heatBlobLarge" />
                   </div>
                   <div className="attentionText">
@@ -607,7 +607,7 @@ export default function Home() {
                   ].map(([name, filter]) => (
                     <div className="robustTile" key={name}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={LESION_IMAGE} alt="" style={{ filter }} />
+                      <img decoding="async" loading="lazy" src={LESION_IMAGE} alt="" style={{ filter }} />
                       <span>{name}</span>
                     </div>
                   ))}
@@ -730,12 +730,16 @@ export default function Home() {
                 <div className="sandboxLabel">02 / Inspect</div>
                 <div className="sandboxTabs" role="tablist" aria-label="Analysis views">
                   <button
+                    role="tab"
+                    aria-selected={sandboxTab === "prediction"}
                     className={sandboxTab === "prediction" ? "active" : ""}
                     onClick={() => setSandboxTab("prediction")}
                   >
                     Prediction
                   </button>
                   <button
+                    role="tab"
+                    aria-selected={sandboxTab === "attention"}
                     className={sandboxTab === "attention" ? "active" : ""}
                     onClick={() => setSandboxTab("attention")}
                     disabled={!result || result.demo_mode || !result.heatmap_data_url}
@@ -743,6 +747,8 @@ export default function Home() {
                     Attention
                   </button>
                   <button
+                    role="tab"
+                    aria-selected={sandboxTab === "robustness"}
                     className={sandboxTab === "robustness" ? "active" : ""}
                     onClick={() => setSandboxTab("robustness")}
                     disabled={!stress}
