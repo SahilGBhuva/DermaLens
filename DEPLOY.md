@@ -16,7 +16,7 @@ Everything below runs in the cloud on free plans. Your computer only needs a bro
 3. Read the dataset licence cell (HAM10000 is CC BY-NC 4.0: non-commercial, with attribution), then **Runtime → Run all**.
 4. When it finishes, your browser downloads `dermalens_efficientnet_b0.pt`, `model_config.json`, `evaluation.json` and `training_history.json`. Note the `sha256` it prints for the `.pt` file.
 
-To use the new model locally first, install it from your Downloads folder. This checks that the weights, settings and evaluation belong together, backs up the current model to `models/previous/`, and prints a before/after comparison:
+To use the new model locally first, install it from your Downloads folder. This checks that the weights, settings and evaluation belong together, installs them into `models/<version>/` (moving any older copy of that version to `models/.backups/`), and prints a comparison with every installed version:
 
 ```bash
 python ml/install_model.py --from ~/Downloads --version v3
