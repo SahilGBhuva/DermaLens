@@ -1,6 +1,6 @@
-# DermaLens — CAC Demo Plan
+# DermaLens — Demo and presentation plan
 
-This plan is designed around the 2026 Congressional App Challenge's stated judging areas: quality/originality of the idea, implementation and user experience, and demonstrated coding/programming skill.
+A three-minute walkthrough for portfolio videos, interviews and presentations. It is built to show three things a reviewer looks for: an original idea, a well-built and honest product, and real understanding of the technical work.
 
 ## Core story
 
@@ -68,12 +68,12 @@ End with:
 - Next.js + three.js frontend; Lighthouse 98 / 100 / 100 / 100
 - Automated tests in GitHub Actions
 
-## Before submission
+## Before sharing it
 
 - [ ] Train v2 in Colab and install it (`python ml/install_model.py --from ~/Downloads --version v2`).
 - [ ] Do not re-run training to chase a better test score — report what the single test evaluation says.
 - [ ] Deploy (see `DEPLOY.md`) and test the live link from a clean browser and a phone.
-- [ ] Open the live site a minute before judges/recording so the free API is awake.
+- [ ] Open the live site a minute before a demo or recording so the free API is awake.
 - [ ] Record the demo with an image you are allowed to use.
 - [ ] Practise the questions in `docs/STUDY_GUIDE.md` out loud.
 - [ ] Make sure every team member can explain the main code paths and ML decisions.

@@ -1,6 +1,6 @@
 # DermaLens study guide
 
-Read this until you can answer every question **in your own words**, without looking. Judges and interviewers care far more about what you understand than about who typed the code.
+Read this until you can answer every question **in your own words**, without looking. Admissions readers and interviewers care far more about what you understand than about who typed the code.
 
 ---
 

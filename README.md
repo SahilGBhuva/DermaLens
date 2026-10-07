@@ -13,7 +13,7 @@ DermaLens is an educational/research web app for experimenting with machine-lear
   - v2: accuracy 0.785 · balanced accuracy 0.733 · **melanoma sensitivity 0.78** · calibration error 0.32 — catches 26 more melanomas, at the cost of more false alarms, lower sensitivity for two other cancers, and poorly calibrated percentages. The trade-off is analysed in [`MODEL_CARD.md`](MODEL_CARD.md).
 - **Honesty by design:** metrics are only shown for the exact model file being served (SHA-256 checked); illustrative sections are labelled; every result says it is not a diagnosis.
 - **Quality:** 35 automated tests; Lighthouse performance 98, accessibility 100, best practices 100, SEO 100; API load-tested inside a 512 MB container.
-- **Docs:** [`DEPLOY.md`](DEPLOY.md) (cloud setup) · [`SECURITY.md`](SECURITY.md) · [`CAC_DEMO.md`](CAC_DEMO.md) (demo script) · [`docs/STUDY_GUIDE.md`](docs/STUDY_GUIDE.md).
+- **Docs:** [`DEPLOY.md`](DEPLOY.md) (cloud setup) · [`SECURITY.md`](SECURITY.md) · [`docs/DEMO.md`](docs/DEMO.md) (demo script) · [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/STUDY_GUIDE.md`](docs/STUDY_GUIDE.md).
 
 ### Run it locally
 
@@ -189,7 +189,7 @@ HAM10000 is useful for education and model research, but performance on a held-o
 
 Grad-CAM visualizations show which model features influenced a score; they do not prove that those features are medically meaningful.
 
-## CAC demo story
+## Demo story
 
 A strong demo is:
 
@@ -286,6 +286,6 @@ python ml/run_pipeline.py \
 
 The final evaluation includes imbalance-aware and calibration-aware metrics, including balanced accuracy, macro F1, per-class sensitivity/specificity, multiclass ROC-AUC, expected calibration error, and multiclass Brier score.
 
-## CAC presentation
+## Presentation
 
-See `CAC_DEMO.md` for a concise demonstration structure focused on originality, implementation/user experience, and demonstrated programming skill.
+See [`docs/DEMO.md`](docs/DEMO.md) for a three-minute demonstration structure and [`docs/ROADMAP.md`](docs/ROADMAP.md) for where the project goes next.
