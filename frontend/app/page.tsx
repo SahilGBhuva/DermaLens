@@ -729,12 +729,14 @@ export default function Home() {
                   ] as const).map(([value, label]) => (
                     <button
                       key={value}
+                      type="button"
                       aria-pressed={imageType === value}
                       className={imageType === value ? "active" : ""}
                       onClick={() => {
                         setImageType(value);
                         setResult(null);
                         setStress(null);
+                        setError("");
                       }}
                     >
                       {label}
