@@ -691,6 +691,50 @@ main {
 .quickActions button:hover { transform: translateY(-1px); color: var(--ink); }
 .quickActions button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
+.photoType { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 4px; }
+.photoType > span {
+  color: #5f7290;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.photoType > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(225, 235, 247, .7);
+}
+.photoType button {
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #4c5f7a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease;
+}
+.photoType button.active { background: #fff; color: var(--ink); box-shadow: var(--soft-shadow); }
+.photoType button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.photoType p { margin: 0; color: #5f7290; font-size: 12px; line-height: 1.5; }
+
+.photoNote {
+  margin: -6px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #eef4fd;
+  border: 1px solid #c9dbf3;
+  color: #1f3a63;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .calibrationNote {
   margin: -6px 0 0;
   padding: 10px 12px;

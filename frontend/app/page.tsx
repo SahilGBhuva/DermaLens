@@ -17,6 +17,8 @@ type Prediction = {
   demo_mode: boolean;
   heatmap_data_url: string | null;
   disclaimer: string;
+  image_type?: "dermoscopy" | "photo";
+  reliability_note?: string | null;
 };
 
 type StressRow = {
@@ -113,6 +115,8 @@ export default function Home() {
   const [sandboxTab, setSandboxTab] = useState<"prediction" | "attention" | "robustness">("prediction");
   const [sampleLoading, setSampleLoading] = useState(false);
   const [analysisMs, setAnalysisMs] = useState<number | null>(null);
+  // The models were trained on dermoscopy; regular photos are allowed but flagged.
+  const [imageType, setImageType] = useState<"dermoscopy" | "photo">("dermoscopy");
   const storyRef = useRef<HTMLElement | null>(null);
   const heroFileRef = useRef<HTMLInputElement | null>(null);
 
@@ -214,6 +218,8 @@ export default function Home() {
       probabilities: result.probabilities,
       robustness: stress,
       response_time_ms: analysisMs,
+      image_type: result.image_type ?? imageType,
+      reliability_note: result.reliability_note ?? null,
       model: {
         architecture: "EfficientNet-B0",
         input_size: "224x224",
@@ -246,6 +252,7 @@ export default function Home() {
         type: blob.type || "image/jpeg",
       });
       chooseFile(sample);
+      setImageType("dermoscopy");
       document.getElementById("sandbox")?.scrollIntoView({ behavior: "smooth" });
     } catch {
       setError("Could not load the sample image. You can still upload your own image.");
@@ -275,7 +282,7 @@ export default function Home() {
 
     try {
       const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-      const response = await fetch(`${base}/predict`, {
+      const response = await fetch(`${base}/predict?image_type=${imageType}`, {
         method: "POST",
         body: form,
       });
@@ -302,7 +309,7 @@ export default function Home() {
 
     try {
       const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-      const response = await fetch(`${base}/stress-test`, {
+      const response = await fetch(`${base}/stress-test?image_type=${result.image_type ?? imageType}`, {
         method: "POST",
         body: form,
       });
@@ -713,6 +720,36 @@ export default function Home() {
                 />
               </label>
 
+              <div className="photoType">
+                <span id="photo-type-label">Photo type</span>
+                <div role="group" aria-labelledby="photo-type-label">
+                  {([
+                    ["dermoscopy", "Dermoscopy"],
+                    ["photo", "Regular photo"],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      aria-pressed={imageType === value}
+                      className={imageType === value ? "active" : ""}
+                      onClick={() => {
+                        setImageType(value);
+                        setResult(null);
+                        setStress(null);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {imageType === "photo" && (
+                  <p>
+                    Less accurate: the model learned from dermoscopy images. For the best
+                    attempt, fill the frame with the spot, use even daylight, keep it in focus
+                    and avoid flash glare.
+                  </p>
+                )}
+              </div>
+
               <div className="uploadActions">
                 <button
                   className="analyzeButton"
@@ -849,6 +886,7 @@ export default function Home() {
                     </div>
                     <strong>{Math.round(result.confidence * 100)}%</strong>
                   </div>
+                  {result.reliability_note && <p className="photoNote">{result.reliability_note}</p>}
                   {typeof research?.evaluation?.expected_calibration_error === "number" &&
                     research.evaluation.expected_calibration_error > 0.1 && (
                       <p className="calibrationNote">

@@ -63,6 +63,8 @@ Grad-CAM indicates model attention, not medical causality or clinical correctnes
 
 **It always answers with one of seven classes.** The model has no "this is not a skin lesion" option: random noise, a phone photo, or a picture of something else still gets a top class. In testing, random-noise images received low scores (27–41%), which the interface labels "inconclusive", but low scores are not a reliable detector of invalid input. Only dermatoscopic lesion images are in scope.
 
+**Regular photos are accepted but flagged.** Users can choose "Regular photo" instead of "Dermoscopy" (`image_type=photo` in the API). The image goes through the same model, and the result carries a reliability note saying everyday photos are outside the training data and less accurate. That accuracy has not been measured yet (see the roadmap's external-validation step); until it is, photo results should be treated as a demonstration only.
+
 ## Explainability output
 
 Grad-CAM is computed on the final convolutional block for the highest-scoring class. The API returns it as a 448 × 448 overlay colored from blue (low contribution) through cyan and yellow to red (high contribution), matching the legend in the web interface.

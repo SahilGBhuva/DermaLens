@@ -133,3 +133,14 @@ def test_no_models_means_demo_and_no_metrics(tmp_path, monkeypatch):
     assert body["model_loaded"] is False and body["training"] is None and body["evaluation"] is None
     files = {"file": ("lesion.png", make_png(), "image/png")}
     assert client.post("/predict", files=files).json()["demo_mode"] is True
+
+
+def test_regular_photos_are_accepted_and_flagged():
+    files = {"file": ("lesion.png", make_png(), "image/png")}
+    photo = client.post("/predict?image_type=photo", files=files).json()
+    assert photo["image_type"] == "photo"
+    assert "less accurate" in photo["reliability_note"]
+    derm = client.post("/predict", files=files).json()
+    assert derm["image_type"] == "dermoscopy" and derm["reliability_note"] is None
+    assert client.post("/stress-test?image_type=photo", files=files).json()["image_type"] == "photo"
+    assert client.post("/predict?image_type=selfie", files=files).status_code == 400

@@ -20,7 +20,7 @@ DermaLens is a long-term research project. Each stage below is meant to produce 
 
 ### 2. External validation (the most important credibility step)
 
-Test v1, v2 and v3, unchanged, on a dataset the models never saw, from different clinics and cameras. Candidates: ISIC challenge datasets, or PAD-UFES-20 (smartphone images, a harder domain shift). **Check each dataset's licence and terms before downloading.** Expect performance to drop, and report by how much. That drop is the honest answer to "would this work elsewhere?"
+Test v1, v2 and v3, unchanged, on a dataset the models never saw, from different clinics and cameras. Candidates: ISIC challenge datasets, or PAD-UFES-20 (smartphone images, a harder domain shift). **Check each dataset's licence and terms before downloading.** Expect performance to drop, and report by how much. That drop is the honest answer to "would this work elsewhere?" PAD-UFES-20 matters most now: the website accepts regular photos (flagged as less accurate), so measuring accuracy on smartphone images would replace "not measured yet" with a real number.
 
 ### 3. Does the attention look at the lesion?
 

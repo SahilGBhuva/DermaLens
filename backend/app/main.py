@@ -101,6 +101,21 @@ def release_memory():
         _LIBC.malloc_trim(0)
 
 
+# The models were trained on dermatoscopic images (HAM10000). Everyday photos
+# are accepted, analysed the same way, and clearly flagged as less reliable.
+IMAGE_TYPES = {"dermoscopy", "photo"}
+PHOTO_NOTE = (
+    "Regular photo: DermaLens was trained on dermoscopy images, so results on everyday "
+    "photos are less accurate, and that accuracy has not been measured yet."
+)
+
+
+def check_image_type(image_type: str) -> str:
+    if image_type not in IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="image_type must be 'dermoscopy' or 'photo'.")
+    return image_type
+
+
 def default_entry() -> ModelEntry:
     return registry.get(None)
 
@@ -250,13 +265,20 @@ def research_status():
 
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...), model: str | None = Query(None, max_length=32)):
+async def predict(
+    file: UploadFile = File(...),
+    model: str | None = Query(None, max_length=32),
+    image_type: str = Query("dermoscopy", max_length=16),
+):
+    image_type = check_image_type(image_type)
     entry = resolve(model)
     image = await load_image(file)
     result = await run_inference(entry.model.predict, image)
 
     return {
         "model_version": entry.version,
+        "image_type": image_type,
+        "reliability_note": PHOTO_NOTE if image_type == "photo" else None,
         "top_class": result.top_class,
         "confidence": result.confidence,
         "uncertainty": result.uncertainty,
@@ -272,7 +294,16 @@ async def predict(file: UploadFile = File(...), model: str | None = Query(None, 
 
 
 @app.post("/stress-test")
-async def stress_test(file: UploadFile = File(...), model: str | None = Query(None, max_length=32)):
+async def stress_test(
+    file: UploadFile = File(...),
+    model: str | None = Query(None, max_length=32),
+    image_type: str = Query("dermoscopy", max_length=16),
+):
+    image_type = check_image_type(image_type)
     entry = resolve(model)
     image = await load_image(file)
-    return {"model_version": entry.version, **await run_inference(entry.model.stress_test, image)}
+    return {
+        "model_version": entry.version,
+        "image_type": image_type,
+        **await run_inference(entry.model.stress_test, image),
+    }
