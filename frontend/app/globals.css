@@ -665,7 +665,8 @@ main {
   gap: 8px;
 }
 
-.quickActions span {
+.quickActions span,
+.quickActions button {
   min-height: 54px;
   padding: 0 12px;
   display: grid;
@@ -677,6 +678,28 @@ main {
   font-size: 10px;
   font-weight: 650;
   box-shadow: var(--soft-shadow);
+}
+
+.quickActions button {
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform .2s ease, color .2s ease;
+}
+
+.quickActions button:hover { transform: translateY(-1px); color: var(--ink); }
+.quickActions button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.calibrationNote {
+  margin: -6px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fbf7ee;
+  border: 1px solid #ecdcb8;
+  color: #4a3d22;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .scrollStory {
@@ -1841,7 +1864,8 @@ a:focus-visible,
     grid-template-columns: 1fr 1fr;
   }
 
-  .quickActions span:nth-child(n+5) {
+  .quickActions span:nth-child(n+5),
+  .quickActions button:nth-child(n+5) {
     display: none;
   }
 

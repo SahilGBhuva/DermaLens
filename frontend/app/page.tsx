@@ -42,6 +42,7 @@ type ResearchStatus = {
     macro_f1: number | null;
     weighted_f1: number | null;
     macro_ovr_roc_auc: number | null;
+    expected_calibration_error?: number | null;
   };
   implemented: Record<string, boolean>;
   note: string;
@@ -96,6 +97,13 @@ export default function Home() {
   const [result, setResult] = useState<Prediction | null>(null);
   const [stress, setStress] = useState<StressResponse | null>(null);
   const [research, setResearch] = useState<ResearchStatus | null>(null);
+
+  // Hero shortcuts: scroll to a section, opening a sandbox tab when it has content.
+  function goTo(section: string, tab?: "attention" | "robustness") {
+    if (tab === "attention" && result && !result.demo_mode && result.heatmap_data_url) setSandboxTab(tab);
+    if (tab === "robustness" && stress) setSandboxTab(tab);
+    document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
+  }
   const [loading, setLoading] = useState(false);
   const [stressLoading, setStressLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -335,10 +343,10 @@ export default function Home() {
         </a>
 
         <div className="navLinks">
-          <a href="#product">Product⌄</a>
-          <a href="#research">Research⌄</a>
+          <a href="#product">Product</a>
+          <a href="#research">Research</a>
           <a href="#sandbox">Sandbox</a>
-          <a href="#evidence">Evidence⌄</a>
+          <a href="#evidence">Evidence</a>
         </div>
 
         <button
@@ -489,7 +497,7 @@ export default function Home() {
               >
                 ▧ Image
               </button>
-              <span className="softPill">◉ DermaLens Research⌄</span>
+              <span className="softPill">◉ DermaLens v2</span>
             </div>
             <input
               ref={heroFileRef}
@@ -514,13 +522,13 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="quickActions">
-          <span>▧ Analyze image</span>
-          <span>◌ View attention</span>
-          <span>◫ Test robustness</span>
-          <span>▥ Metrics</span>
-          <span>▤ Research status</span>
-        </div>
+        <nav className="quickActions" aria-label="Shortcuts">
+          <button onClick={() => goTo("sandbox")}>▧ Analyze image</button>
+          <button onClick={() => goTo("sandbox", "attention")}>◌ View attention</button>
+          <button onClick={() => goTo("sandbox", "robustness")}>◫ Test robustness</button>
+          <button onClick={() => goTo("evidence")}>▥ Metrics</button>
+          <button onClick={() => goTo("research")}>▤ Research status</button>
+        </nav>
       </section>
 
       <section className="scrollStory fullBleed" id="product" ref={storyRef}>
@@ -841,6 +849,15 @@ export default function Home() {
                     </div>
                     <strong>{Math.round(result.confidence * 100)}%</strong>
                   </div>
+                  {typeof research?.evaluation?.expected_calibration_error === "number" &&
+                    research.evaluation.expected_calibration_error > 0.1 && (
+                      <p className="calibrationNote">
+                        These percentages are model scores, not probabilities: on held-out tests this
+                        model&apos;s stated confidence was off by about{" "}
+                        {Math.round(research.evaluation.expected_calibration_error * 100)} points on
+                        average. Compare the classes rather than reading the number literally.
+                      </p>
+                    )}
 
                   <div className="resultStats">
                     <div><span>Uncertainty</span><b>{Math.round(result.uncertainty * 100)}%</b></div>
