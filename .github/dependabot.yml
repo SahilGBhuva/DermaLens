@@ -5,22 +5,37 @@ updates:
     directory: /backend
     schedule:
       interval: weekly
+    # Wait a week before proposing a brand-new release (security updates are not delayed).
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
   - package-ecosystem: pip
     directory: /ml
     schedule:
       interval: weekly
+    # Wait a week before proposing a brand-new release (security updates are not delayed).
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: weekly
+    # Wait a week before proposing a brand-new release (security updates are not delayed).
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    # Wait a week before proposing a brand-new release (security updates are not delayed).
+    cooldown:
+      default-days: 7
   - package-ecosystem: docker
     directory: /backend
     schedule:
       interval: weekly
+    # Wait a week before proposing a brand-new release (security updates are not delayed).
+    cooldown:
+      default-days: 7

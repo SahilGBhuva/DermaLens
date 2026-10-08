@@ -39,6 +39,23 @@ EVALUATION = "evaluation.json"
 HISTORY = "training_history.json"
 VERSION_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
 
+# SHA-256 of each published release file, pinned in reviewed code. The weights
+# hash inside model_config.json comes from the same release, so it only catches
+# corruption; these pins also catch a release asset being swapped. Add a new
+# version's hashes here when it is published.
+PINNED_SHA256: dict[str, dict[str, str]] = {
+    "v1": {
+        WEIGHTS: "548cce02f6fd1fe98b5be28030dd0b560f208f29890535c0bb0701c6df377866",
+        CONFIG: "1113df87271634a89508046ef0e38d82b66fad9ccf9ffccdd252c095af64579b",
+        EVALUATION: "bbe393bee66f5a715115c90d1e94b5785f053e67c66a449493e9d6b1db370b06",
+    },
+    "v2": {
+        WEIGHTS: "a9033a0c6d56c5af967ed828d4e6525eb558fce069342f7d3460a959290f720e",
+        CONFIG: "144798dd5b4aa0deeb97f8d06a1e9d993f4fdb54c106552f73084cc4bf4aef6e",
+        EVALUATION: "b2fd11540791d9a1e7eefb72632f789b8fdc12698ff3ea5f031b696a42c30fe7",
+    },
+}
+
 
 @dataclass
 class ModelEntry:
@@ -96,8 +113,16 @@ def fetch_releases(models_dir: Path, releases: list[tuple[str, str]]) -> None:
     """Download each version's files from its release URL if missing."""
     for version, base in releases:
         folder = models_dir / version
-        for name in (WEIGHTS, CONFIG, EVALUATION):
-            download(f"{base}/{name}", folder / name)
+        pins = PINNED_SHA256.get(version, {})
+        try:
+            for name in (WEIGHTS, CONFIG, EVALUATION):
+                download(f"{base}/{name}", folder / name, pins.get(name, ""))
+        except RuntimeError as exc:
+            # Fail closed: drop the whole version rather than serve a mix.
+            log.error("Not serving %s: %s", version, exc)
+            for name in (WEIGHTS, CONFIG, EVALUATION):
+                (folder / name).unlink(missing_ok=True)
+            continue
         try:
             download(f"{base}/{HISTORY}", folder / HISTORY)  # optional
         except Exception as exc:  # noqa: BLE001 - history only feeds a chart

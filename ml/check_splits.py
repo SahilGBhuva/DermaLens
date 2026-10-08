@@ -24,9 +24,14 @@ def main():
     val_lesions = set(val["lesion_id"])
     test_lesions = set(test["lesion_id"])
 
-    assert train_lesions.isdisjoint(val_lesions), "train/val lesion leakage"
-    assert train_lesions.isdisjoint(test_lesions), "train/test lesion leakage"
-    assert val_lesions.isdisjoint(test_lesions), "val/test lesion leakage"
+    # Explicit checks, not asserts: `python -O` strips asserts, and this one must always run.
+    for (a_name, a), (b_name, b) in [
+        (("train", train_lesions), ("val", val_lesions)),
+        (("train", train_lesions), ("test", test_lesions)),
+        (("val", val_lesions), ("test", test_lesions)),
+    ]:
+        if not a.isdisjoint(b):
+            raise ValueError(f"{a_name}/{b_name} lesion leakage: {len(a & b)} shared lesion_id(s)")
 
     print("No lesion_id leakage detected.")
     print(f"train={len(train)} val={len(val)} test={len(test)}")

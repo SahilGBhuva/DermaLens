@@ -47,8 +47,13 @@ class RequestGuard:
     # ── rate limiting ────────────────────────────────────────────────
     def client_id(self, scope, headers: dict[bytes, bytes]) -> str:
         if self.trust_proxy:
-            # Behind a platform proxy (e.g. Render) the right-most entry is the
-            # one the proxy appended; entries further left are client-supplied.
+            # Render is fronted by Cloudflare, which sets CF-Connecting-IP to the
+            # real client and overwrites any client-sent value. X-Forwarded-For
+            # is only a fallback: on Render its right-most entry is a proxy hop
+            # that changes between requests, and its left entries are spoofable.
+            connecting = headers.get(b"cf-connecting-ip", b"").decode("latin-1").strip()
+            if connecting:
+                return connecting
             forwarded = headers.get(b"x-forwarded-for", b"").decode("latin-1")
             if forwarded.strip():
                 return forwarded.split(",")[-1].strip()

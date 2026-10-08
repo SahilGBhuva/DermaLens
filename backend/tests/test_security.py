@@ -103,3 +103,17 @@ def test_rate_limit_uses_rightmost_forwarded_ip_when_trusted():
     headers = {b"x-forwarded-for": b"6.6.6.6, 203.0.113.9"}
     assert guard.client_id(scope, headers) == "203.0.113.9"  # spoofed left entry ignored
     assert RequestGuard(None, 1, (), 1, 60).client_id(scope, headers) == "10.0.0.1"
+
+
+def test_rate_limit_prefers_cloudflare_client_ip_when_trusted():
+    from app.guards import RequestGuard
+
+    guard = RequestGuard(None, 1, (), 1, 60, trust_proxy_headers=True)
+    scope = {"client": ("10.0.0.1", 1234)}
+    # The right-most forwarded hop is a proxy that changes per request; the
+    # visitor must still map to one key.
+    for hop in (b"172.68.1.1", b"162.158.9.9"):
+        headers = {b"cf-connecting-ip": b"203.0.113.9", b"x-forwarded-for": b"6.6.6.6, " + hop}
+        assert guard.client_id(scope, headers) == "203.0.113.9"
+    # Without trust, client-sent headers are ignored entirely.
+    assert RequestGuard(None, 1, (), 1, 60).client_id(scope, {b"cf-connecting-ip": b"1.2.3.4"}) == "10.0.0.1"

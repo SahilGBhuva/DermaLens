@@ -7,7 +7,7 @@ services:
     dockerContext: .
     healthCheckPath: /health
     envVars:
-      # Render's proxy appends the real client IP to X-Forwarded-For (rate limiting)
+      # Rate limit by the visitor IP that Cloudflare (in front of Render) reports
       - key: TRUST_PROXY_HEADERS
         value: "1"
       # Your Vercel site address, e.g. https://dermalens.vercel.app
