@@ -49,6 +49,11 @@ def test_metadata_rejects_unknown_codes_and_missing_images(tmp_path):
     with pytest.raises(ValueError, match="unexpected diagnostic"):
         load_metadata(bad_code, tmp_path)
 
+    traversal = tmp_path / "traversal.csv"
+    pd.DataFrame({"img_id": ["../meta.csv"], "diagnostic": ["NEV"]}).to_csv(traversal, index=False)
+    with pytest.raises(ValueError, match="plain file name"):
+        load_metadata(traversal, tmp_path)
+
     missing = tmp_path / "missing.csv"
     pd.DataFrame({"img_id": ["nope.png"], "diagnostic": ["NEV"]}).to_csv(missing, index=False)
     with pytest.raises(FileNotFoundError):

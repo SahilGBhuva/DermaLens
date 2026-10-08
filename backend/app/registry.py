@@ -45,14 +45,14 @@ VERSION_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
 # version's hashes here when it is published.
 PINNED_SHA256: dict[str, dict[str, str]] = {
     "v1": {
-        WEIGHTS: "548cce02f6fd1fe98b5be28030dd0b560f208f29890535c0bb0701c6df377866",
-        CONFIG: "1113df87271634a89508046ef0e38d82b66fad9ccf9ffccdd252c095af64579b",
-        EVALUATION: "bbe393bee66f5a715115c90d1e94b5785f053e67c66a449493e9d6b1db370b06",
+        WEIGHTS: "548cce02f6fd1fe98b5be28030dd0b560f208f29890535c0bb0701c6df377866",  # pragma: allowlist secret (public file hash)
+        CONFIG: "1113df87271634a89508046ef0e38d82b66fad9ccf9ffccdd252c095af64579b",  # pragma: allowlist secret (public file hash)
+        EVALUATION: "bbe393bee66f5a715115c90d1e94b5785f053e67c66a449493e9d6b1db370b06",  # pragma: allowlist secret (public file hash)
     },
     "v2": {
-        WEIGHTS: "a9033a0c6d56c5af967ed828d4e6525eb558fce069342f7d3460a959290f720e",
-        CONFIG: "144798dd5b4aa0deeb97f8d06a1e9d993f4fdb54c106552f73084cc4bf4aef6e",
-        EVALUATION: "b2fd11540791d9a1e7eefb72632f789b8fdc12698ff3ea5f031b696a42c30fe7",
+        WEIGHTS: "a9033a0c6d56c5af967ed828d4e6525eb558fce069342f7d3460a959290f720e",  # pragma: allowlist secret (public file hash)
+        CONFIG: "144798dd5b4aa0deeb97f8d06a1e9d993f4fdb54c106552f73084cc4bf4aef6e",  # pragma: allowlist secret (public file hash)
+        EVALUATION: "b2fd11540791d9a1e7eefb72632f789b8fdc12698ff3ea5f031b696a42c30fe7",  # pragma: allowlist secret (public file hash)
     },
 }
 

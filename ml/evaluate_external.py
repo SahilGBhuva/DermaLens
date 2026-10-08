@@ -65,6 +65,11 @@ def load_metadata(metadata: Path, images_dir: Path) -> pd.DataFrame:
     missing = {"img_id", "diagnostic"} - set(frame.columns)
     if missing:
         raise ValueError(f"metadata missing columns: {sorted(missing)}")
+    # img_id comes from a downloaded file: allow plain file names only, so a
+    # crafted row cannot point outside the images folder.
+    unsafe = [name for name in frame["img_id"] if Path(str(name)).name != str(name) or str(name).startswith(".")]
+    if unsafe:
+        raise ValueError(f"img_id must be a plain file name, got e.g. {unsafe[:3]}")
     unknown = set(frame["diagnostic"]) - set(PAD_TO_DERMALENS) - {UNMAPPED}
     if unknown:
         raise ValueError(f"unexpected diagnostic codes: {sorted(unknown)}")
