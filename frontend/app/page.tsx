@@ -19,6 +19,7 @@ type Prediction = {
   disclaimer: string;
   image_type?: "dermoscopy" | "photo";
   reliability_note?: string | null;
+  model_version?: string;
 };
 
 type StressRow = {
@@ -60,7 +61,6 @@ const labels: Record<string, string> = {
   vasc: "Vascular lesion",
 };
 
-// ISIC_0016128 from the ISIC Archive (CC0), served locally.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 // POST an image to the API and turn every failure into a sentence a visitor
@@ -86,6 +86,12 @@ async function postImage(path: string, file: File, failure: string) {
   return data;
 }
 
+// How the served versions differ, from MODEL_CARD.md (held-out test results).
+const modelNotes: Record<string, string> = {
+  v1: "v1 is balanced across classes and its scores are well calibrated.",
+  v2: "v2 was tuned to catch more melanomas, at the cost of more false alarms.",
+};
+
 const imageTypesByExtension: Record<string, string> = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
@@ -93,6 +99,7 @@ const imageTypesByExtension: Record<string, string> = {
   webp: "image/webp",
 };
 
+// ISIC_0016128 from the ISIC Archive (CC0), served locally.
 const LESION_IMAGE = "/images/isic-0016128.webp";
 // Real Grad-CAM attention maps from DermaLens v2 and v1 on the CC0 sample image
 // ISIC_0016128 (generated locally, see frontend/public/images).
@@ -144,6 +151,10 @@ export default function Home() {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+  const [models, setModels] = useState<string[]>([]);
+  // A second model's scores for the same image ("second opinion").
+  const [comparison, setComparison] = useState<Prediction | null>(null);
+  const [comparing, setComparing] = useState(false);
   const [activeStory, setActiveStory] = useState(0);
   const [sandboxTab, setSandboxTab] = useState<"prediction" | "attention" | "robustness">("prediction");
   const [sampleLoading, setSampleLoading] = useState(false);
@@ -155,20 +166,27 @@ export default function Home() {
   const dragDepth = useRef(0);
 
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
+  const otherModel = result?.model_version
+    ? models.find((version) => version !== result.model_version)
+    : undefined;
+
+  useEffect(() => {
+    setComparison(null);
+  }, [result]);
 
   useEffect(() => {
     Promise.allSettled([
       fetch(`${API_BASE}/research-status`).then((response) =>
         response.ok ? response.json() : null
       ),
-      fetch(`${API_BASE}/health`).then((response) => response.ok),
+      fetch(`${API_BASE}/health`).then((response) => (response.ok ? response.json() : null)),
     ]).then(([researchResult, healthResult]) => {
       if (researchResult.status === "fulfilled" && researchResult.value) {
         setResearch(researchResult.value);
       }
-      setApiOnline(
-        healthResult.status === "fulfilled" ? healthResult.value : false
-      );
+      const health = healthResult.status === "fulfilled" ? healthResult.value : null;
+      setApiOnline(Boolean(health));
+      setModels(Array.isArray(health?.models) ? health.models : []);
     });
   }, []);
 
@@ -285,6 +303,16 @@ export default function Home() {
       response_time_ms: analysisMs,
       image_type: result.image_type ?? imageType,
       reliability_note: result.reliability_note ?? null,
+      model_version: result.model_version ?? null,
+      second_opinion: comparison
+        ? {
+            model_version: comparison.model_version,
+            top_class: comparison.top_class,
+            confidence: comparison.confidence,
+            probabilities: comparison.probabilities,
+            agrees: comparison.top_class === result.top_class,
+          }
+        : null,
       model: {
         architecture: "EfficientNet-B0",
         input_size: "224x224",
@@ -373,6 +401,24 @@ export default function Home() {
       window.clearTimeout(slowTimer);
       setSlow(false);
       setLoading(false);
+    }
+  }
+
+  async function compareModels() {
+    if (!file || !result || !otherModel) return;
+    setComparing(true);
+    setError("");
+    try {
+      const data = await postImage(
+        `/predict?model=${encodeURIComponent(otherModel)}&explain=false&image_type=${result.image_type ?? imageType}`,
+        file,
+        "Comparison failed.",
+      );
+      setComparison(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Comparison failed.");
+    } finally {
+      setComparing(false);
     }
   }
 
@@ -986,6 +1032,38 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
+
+                  {otherModel && (
+                    <div className="secondOpinion" aria-live="polite">
+                      <div>
+                        <span>Second opinion</span>
+                        {comparison ? (
+                          <>
+                            <strong>
+                              {otherModel}: {labels[comparison.top_class] ?? comparison.top_class}{" "}
+                              {Math.round(comparison.confidence * 100)}%
+                            </strong>
+                            <p>
+                              {comparison.top_class === result.top_class
+                                ? `Agrees with ${result.model_version}. `
+                                : `Disagrees with ${result.model_version}: a sign this image is hard to call. `}
+                              {modelNotes[otherModel] ?? ""}
+                            </p>
+                          </>
+                        ) : (
+                          <p>
+                            Run the same image through {otherModel}, the other trained version.{" "}
+                            {modelNotes[otherModel] ?? ""}
+                          </p>
+                        )}
+                      </div>
+                      {!comparison && (
+                        <button type="button" onClick={compareModels} disabled={comparing}>
+                          {comparing ? "Comparing…" : `Compare with ${otherModel}`} →
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

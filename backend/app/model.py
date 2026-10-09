@@ -155,7 +155,7 @@ class DermaLensModel:
             "min_mel_sensitivity_target": self.config.get("min_mel_sensitivity_target"),
         }
 
-    def predict(self, image: Image.Image) -> Prediction:
+    def predict(self, image: Image.Image, explain: bool = True) -> Prediction:
         if self.demo_mode:
             probs = {label: 1.0 / len(CLASSES) for label in CLASSES}
             return Prediction(
@@ -170,6 +170,16 @@ class DermaLensModel:
 
         original = image.convert("RGB")
         summary = self._predict_summary(original)
+        if not explain:  # scores only, e.g. a second model for comparison
+            return Prediction(
+                probabilities=summary["probabilities"],
+                top_class=summary["top_class"],
+                confidence=summary["confidence"],
+                uncertainty=summary["uncertainty"],
+                entropy=summary["entropy"],
+                demo_mode=False,
+                heatmap_data_url=None,
+            )
 
         target_layer = self.model.features[-1]
         cam = GradCAM(self.model, target_layer)

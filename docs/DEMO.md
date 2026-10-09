@@ -28,8 +28,9 @@ Scroll through the four steps: prediction, attention, robustness, evidence.
 2. **Prediction** tab: read the full distribution, not just the top class, and the response time.
 3. **Attention** tab: the real Grad-CAM overlay.
 4. **Robustness** tab: run the stress test — darker, brighter, lower contrast, blurred. If the top class changes, say: "This is the kind of fragility the app is built to expose."
-5. **Export result** to show the research record.
-6. Say clearly: "This is not a diagnosis."
+5. **Second opinion:** click "Compare with v1". On the sample, v1 disagrees (mole, 54%). Say: "When two trained models disagree, that's a signal this image is hard, which is exactly when a person should look closer."
+6. **Export result** to show the research record (it includes the second opinion).
+7. Say clearly: "This is not a diagnosis."
 
 ### 1:50–2:40 — Evidence and what you improved
 

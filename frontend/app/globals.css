@@ -1542,6 +1542,44 @@ main {
   font-weight: 650;
 }
 
+.secondOpinion {
+  margin-top: 18px;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255,255,255,.6);
+}
+.secondOpinion > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.secondOpinion span {
+  color: #7287a5;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+.secondOpinion strong { font-size: 13px; }
+.secondOpinion p { margin: 0; color: #5f7290; font-size: 12px; line-height: 1.5; }
+.secondOpinion button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  background: rgba(255,255,255,.74);
+  color: #405b7f;
+  font-size: 11px;
+  font-weight: 650;
+}
+.secondOpinion button:disabled { cursor: wait; opacity: .6; }
+.secondOpinion button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .secondOpinion { flex-direction: column; align-items: stretch; }
+}
+
 .stressResults {
   display: grid;
   grid-template-columns: 260px 1fr;

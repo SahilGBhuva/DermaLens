@@ -8,13 +8,13 @@ DermaLens is an educational/research web app for experimenting with machine-lear
 
 ## At a glance
 
-- **What it does:** upload a dermatoscopic image → see all seven class probabilities, a Grad-CAM attention overlay, and whether the answer survives darker, brighter, lower-contrast and blurred versions of the same photo.
+- **What it does:** upload a dermatoscopic image → see all seven class probabilities, a Grad-CAM attention overlay, whether the answer survives darker, brighter, lower-contrast and blurred versions of the same photo, and a second opinion from the other model version. Everyday phone photos are accepted too, flagged as less accurate.
 - **Model:** EfficientNet-B0 fine-tuned on HAM10000 with a lesion-level train / validation / test split.
 - **Held-out test results** (1,494 images, each scored once):
   - v1: accuracy 0.801 · balanced accuracy 0.741 · **melanoma sensitivity 0.64** · calibration error 0.05
   - v2: accuracy 0.785 · balanced accuracy 0.733 · **melanoma sensitivity 0.78** · calibration error 0.32 — catches 26 more melanomas, at the cost of more false alarms, lower sensitivity for two other cancers, and poorly calibrated percentages. The trade-off is analysed in [`MODEL_CARD.md`](MODEL_CARD.md).
 - **Honesty by design:** metrics are only shown for the exact model file being served (SHA-256 checked); illustrative sections are labelled; every result says it is not a diagnosis.
-- **Quality:** 38 API tests and 11 ML tests; security-hardened API (see [`SECURITY.md`](SECURITY.md)), load-tested inside a 512 MB container.
+- **Quality:** 43 API tests and 13 ML tests, ESLint on the site, all run in CI; security-hardened API (see [`SECURITY.md`](SECURITY.md)), load-tested inside a 512 MB container.
 - **Docs:** [`DEPLOY.md`](DEPLOY.md) (cloud setup) · [`SECURITY.md`](SECURITY.md) · [`docs/DEMO.md`](docs/DEMO.md) (demo script) · [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/STUDY_GUIDE.md`](docs/STUDY_GUIDE.md).
 
 ### Run it locally
@@ -35,7 +35,10 @@ Each trained model lives in its own folder (`models/v1/`, `models/v2/`) and the 
 ## What is implemented
 
 - Next.js site: an image-gallery hero (including real Grad-CAM maps from v1 and v2 on a CC0 ISIC image), a scroll story, a methodology section, and an evidence section that only shows real held-out metrics
-- sandbox wired to the API: upload an image (or a clearly labelled synthetic sample), read all seven probabilities, toggle the Grad-CAM overlay, and run the stress test
+- sandbox wired to the API: upload or drag in an image (or the CC0 sample), read all seven probabilities, toggle the Grad-CAM overlay, and run the stress test
+- photo type switch: dermoscopy, or a regular photo, which runs through the same model and comes back with a reliability note (`image_type=photo`)
+- second opinion: run the same image through the other trained version (scores only, `explain=false`) and see whether the two agree
+- plain-language errors for a sleeping, busy or rate-limited server
 - FastAPI + PyTorch inference API
 - EfficientNet-B0 transfer-learning pipeline
 - HAM10000 metadata preparation
@@ -132,6 +135,18 @@ python ml/evaluate.py \
 
 Do not use the test set to tune the model. Keep it for final evaluation.
 
+### External check on smartphone photos (PAD-UFES-20)
+
+`ml/evaluate_external.py` runs the trained versions, unchanged, on [PAD-UFES-20](https://data.mendeley.com/datasets/zr7vgbcyr2/1) (2,298 smartphone photos, CC BY 4.0). Five of its six diagnoses map onto DermaLens classes; invasive SCC has no class and is reported as "flagged as concerning". It also reports accuracy by Fitzpatrick skin type.
+
+```bash
+python ml/evaluate_external.py \
+  --metadata data/pad_ufes_20/metadata.csv \
+  --images-dir data/pad_ufes_20/images \
+  --models models/v1,models/v2 \
+  --output models/external/pad_ufes_20.json
+```
+
 ## 5. Run the API
 
 With the root `.venv` active:
@@ -208,7 +223,14 @@ This positions DermaLens as an explainable medical-ML research tool rather than 
 
 ## Quality checks
 
-GitHub Actions builds the Next.js frontend and runs backend API tests on pushes and pull requests.
+GitHub Actions lints and builds the Next.js frontend and runs the backend API tests on pushes and pull requests; CodeQL scans both languages.
+
+Lint the site locally:
+
+```bash
+cd frontend
+npm run lint
+```
 
 Run the backend tests locally:
 

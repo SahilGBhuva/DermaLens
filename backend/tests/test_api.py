@@ -112,6 +112,20 @@ def test_predict_uses_requested_version(two_versions, monkeypatch):
     assert client.get("/health").json()["models"] == ["v2", "v1"]
 
 
+def test_scores_only_prediction_skips_grad_cam(two_versions, monkeypatch):
+    from app import main
+    from app.registry import ModelRegistry
+
+    monkeypatch.setattr(main, "registry", ModelRegistry(two_versions))
+    files = {"file": ("lesion.png", make_png(), "image/png")}
+    full = client.post("/predict?model=v1", files=files).json()
+    scores = client.post("/predict?model=v1&explain=false", files=files).json()
+    assert full["heatmap_data_url"].startswith("data:image/")
+    assert scores["heatmap_data_url"] is None
+    assert scores["top_class"] == full["top_class"]
+    assert scores["probabilities"] == full["probabilities"]
+
+
 def test_metrics_hidden_when_measured_on_other_weights(tmp_path, monkeypatch):
     from app import main
     from app.registry import ModelRegistry

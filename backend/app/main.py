@@ -4,6 +4,7 @@ import gc
 import os
 import sys
 import warnings
+from functools import partial
 from io import BytesIO
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
@@ -269,11 +270,12 @@ async def predict(
     file: UploadFile = File(...),
     model: str | None = Query(None, max_length=32),
     image_type: str = Query("dermoscopy", max_length=16),
+    explain: bool = Query(True, description="false skips Grad-CAM (scores only)"),
 ):
     image_type = check_image_type(image_type)
     entry = resolve(model)
     image = await load_image(file)
-    result = await run_inference(entry.model.predict, image)
+    result = await run_inference(partial(entry.model.predict, explain=explain), image)
 
     return {
         "model_version": entry.version,
