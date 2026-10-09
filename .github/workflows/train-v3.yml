@@ -61,11 +61,9 @@ jobs:
           D="$RUNNER_TEMP/ham"
           mkdir -p "$D/images"
           A=https://dataverse.harvard.edu/api/access/datafile
-          # The ingested .tab version is the one Dataverse publishes a checksum for.
-          curl -fsSL --retry 3 -o "$D/metadata.tab" "$A/4338392"
-          echo "8f85fb1aa29d80a2797247e434deb79d  $D/metadata.tab" | md5sum -c -
-          python -c "import pandas as pd, sys; pd.read_csv(sys.argv[1], sep='\t').to_csv(sys.argv[2], index=False)" \
-            "$D/metadata.tab" "$D/metadata.csv"
+          # Dataverse's published MD5 is for the original upload, so fetch that format.
+          curl -fsSL --retry 3 -o "$D/metadata.csv" "$A/4338392?format=original"
+          echo "8f85fb1aa29d80a2797247e434deb79d  $D/metadata.csv" | md5sum -c -
           while read -r id hash; do
             curl -fsSL --retry 3 -o "$D/part.zip" "$A/$id"
             echo "$hash  $D/part.zip" | md5sum -c -
