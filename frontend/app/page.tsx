@@ -61,6 +61,31 @@ const labels: Record<string, string> = {
 };
 
 // ISIC_0016128 from the ISIC Archive (CC0), served locally.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+// POST an image to the API and turn every failure into a sentence a visitor
+// can act on (the free server sleeps when idle and answers 502s while waking).
+async function postImage(path: string, file: File, failure: string) {
+  const form = new FormData();
+  form.append("file", file);
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { method: "POST", body: form });
+  } catch {
+    throw new Error(
+      "Couldn't reach the analysis server. It may be waking up from sleep: wait a few seconds and try again.",
+    );
+  }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    if (response.status >= 500 || !data) {
+      throw new Error("The analysis server is starting up or busy. Wait a few seconds and try again.");
+    }
+    throw new Error(data.detail ?? failure);
+  }
+  return data;
+}
+
 const imageTypesByExtension: Record<string, string> = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
@@ -115,6 +140,7 @@ export default function Home() {
   }
   const [loading, setLoading] = useState(false);
   const [stressLoading, setStressLoading] = useState(false);
+  const [slow, setSlow] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [apiOnline, setApiOnline] = useState<boolean | null>(null);
@@ -131,12 +157,11 @@ export default function Home() {
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
 
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
     Promise.allSettled([
-      fetch(`${base}/research-status`).then((response) =>
+      fetch(`${API_BASE}/research-status`).then((response) =>
         response.ok ? response.json() : null
       ),
-      fetch(`${base}/health`).then((response) => response.ok),
+      fetch(`${API_BASE}/health`).then((response) => response.ok),
     ]).then(([researchResult, healthResult]) => {
       if (researchResult.status === "fulfilled" && researchResult.value) {
         setResearch(researchResult.value);
@@ -333,26 +358,20 @@ export default function Home() {
     setResult(null);
     setStress(null);
 
-    const form = new FormData();
-    form.append("file", file);
-
     const startedAt = performance.now();
+    // A sleeping free server takes up to a minute to answer; say so instead of spinning silently.
+    const slowTimer = window.setTimeout(() => setSlow(true), 6000);
 
     try {
-      const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-      const response = await fetch(`${base}/predict?image_type=${imageType}`, {
-        method: "POST",
-        body: form,
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail ?? "Analysis failed.");
+      const data = await postImage(`/predict?image_type=${imageType}`, file, "Analysis failed.");
       setResult(data);
       setAnalysisMs(Math.round(performance.now() - startedAt));
       setSandboxTab("prediction");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed.");
     } finally {
+      window.clearTimeout(slowTimer);
+      setSlow(false);
       setLoading(false);
     }
   }
@@ -362,18 +381,12 @@ export default function Home() {
     setStressLoading(true);
     setError("");
 
-    const form = new FormData();
-    form.append("file", file);
-
     try {
-      const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-      const response = await fetch(`${base}/stress-test?image_type=${result.image_type ?? imageType}`, {
-        method: "POST",
-        body: form,
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail ?? "Stress test failed.");
+      const data = await postImage(
+        `/stress-test?image_type=${result.image_type ?? imageType}`,
+        file,
+        "Stress test failed.",
+      );
       setStress(data);
       setSandboxTab("robustness");
     } catch (err) {
@@ -870,6 +883,12 @@ export default function Home() {
                   </div>
                   <strong>Analyzing image</strong>
                   <p>Preparing the image, running inference, and building the explanation.</p>
+                  {slow && (
+                    <p className="wakeNote">
+                      The free server sleeps when nobody is using it. Waking it can take up to a
+                      minute; after that, results take about a second.
+                    </p>
+                  )}
                   <div className="loadingSteps">
                     <div><i className="done" /><span>Validate image</span></div>
                     <div><i className="active" /><span>Run model</span></div>

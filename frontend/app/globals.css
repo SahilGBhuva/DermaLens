@@ -750,6 +750,18 @@ main {
 
 .photoNote + .calibrationNote { margin-top: 2px; }
 
+.wakeNote {
+  max-width: 420px;
+  margin: 14px auto 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #eef4fd;
+  border: 1px solid #c9dbf3;
+  color: #1f3a63;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .scrollStory {
   position: relative;
   min-height: 330vh;

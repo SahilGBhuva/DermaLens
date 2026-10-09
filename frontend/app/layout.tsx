@@ -9,6 +9,14 @@ const siteUrl =
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : "http://localhost:3000");
 
+const apiOrigin = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_API_URL ?? "").origin;
+  } catch {
+    return null;
+  }
+})();
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
@@ -57,6 +65,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Open the connection to the API while the page loads, before the first upload. */}
+        {apiOrigin && <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" />}
+      </head>
       <body>{children}</body>
     </html>
   );

@@ -93,6 +93,15 @@ def test_rate_limit_returns_429_with_retry_after():
     assert [limited.post("/predict").status_code for _ in range(3)] == [200, 200, 429]
     blocked = limited.post("/predict")
     assert int(blocked.headers["retry-after"]) >= 1
+    assert "limit: 2 per minute" in blocked.json()["detail"]
+
+
+def test_wait_text_is_readable():
+    from app.guards import wait_text
+
+    assert wait_text(40) == "40 seconds"
+    assert wait_text(60) == "about 1 minute"
+    assert wait_text(573) == "about 10 minutes"
 
 
 def test_rate_limit_uses_rightmost_forwarded_ip_when_trusted():

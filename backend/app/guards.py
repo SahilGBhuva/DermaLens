@@ -24,6 +24,19 @@ API_CSP = (b"content-security-policy", b"default-src 'none'; frame-ancestors 'no
 DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
 
 
+def wait_text(seconds: int) -> str:
+    """A wait people can read: '40 seconds', 'about 1 minute', 'about 10 minutes'."""
+    if seconds < 60:
+        return f"{seconds} seconds"
+    minutes = -(-seconds // 60)  # round up, so nobody comes back too early
+    return f"about {minutes} minute{'s' if minutes != 1 else ''}"
+
+
+def window_text(seconds: float) -> str:
+    minutes = max(1, round(seconds / 60))
+    return "minute" if minutes == 1 else f"{minutes} minutes"
+
+
 class RequestGuard:
     def __init__(
         self,
@@ -117,7 +130,9 @@ class RequestGuard:
             if wait:
                 await reply(
                     429,
-                    f"Too many analyses from this connection. Try again in {wait} seconds.",
+                    "Too many analyses from this connection (limit: "
+                    f"{self.rate_limit} per {window_text(self.rate_window)}). "
+                    f"Try again in {wait_text(wait)}.",
                     [(b"retry-after", str(wait).encode())],
                 )
                 return
