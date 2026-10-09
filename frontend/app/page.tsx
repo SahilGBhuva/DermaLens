@@ -447,7 +447,6 @@ export default function Home() {
 
         <div className="visualRail fullBleed" aria-label="DermaLens capabilities">
           <article className="railCard imageCard">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img decoding="async" src={LESION_IMAGE} alt="" />
           </article>
 
@@ -460,7 +459,6 @@ export default function Home() {
 
           <article className="railCard heatCard">
             <div className="fakeHeat">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img decoding="async" src={LESION_IMAGE} alt="" />
               <div className="heatBlob heatBlobOne" />
               <div className="heatBlob heatBlobTwo" />
@@ -473,7 +471,6 @@ export default function Home() {
             <div className="miniConditions">
               {[0, 1, 2].map((item) => (
                 <div key={item}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img decoding="async" src={LESION_IMAGE} alt="" />
                 </div>
               ))}
@@ -481,7 +478,6 @@ export default function Home() {
           </article>
 
           <article className="railCard labCard">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img decoding="async" src={ATTENTION_V2_IMAGE} alt="" />
           </article>
 
@@ -504,7 +500,6 @@ export default function Home() {
           </article>
 
           <article className="railCard labCard secondaryLabCard">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img decoding="async" src={ATTENTION_V1_IMAGE} alt="" />
           </article>
 
@@ -523,7 +518,6 @@ export default function Home() {
             <div className="robustnessThumbRow">
               {[0, 1, 2, 3].map((item) => (
                 <div key={item}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={LESION_IMAGE}
                     alt=""
@@ -549,7 +543,6 @@ export default function Home() {
           </article>
 
           <article className="railCard imageCard secondLesionCard">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img decoding="async" src={LESION_IMAGE} alt="" />
             <span>Attention ≠ diagnosis</span>
           </article>
@@ -648,7 +641,6 @@ export default function Home() {
               <div className={activeStory === 0 ? "storyPane active" : "storyPane"}>
                 <div className="analyzeMock">
                   <div className="mockImage">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img decoding="async" loading="lazy" src={LESION_IMAGE} alt="" />
                   </div>
                   <div className="mockPrediction">
@@ -668,7 +660,6 @@ export default function Home() {
               <div className={activeStory === 1 ? "storyPane active" : "storyPane"}>
                 <div className="attentionMock">
                   <div className="attentionPhoto">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img decoding="async" loading="lazy" src={LESION_IMAGE} alt="" />
                     <div className="heatBlob heatBlobLarge" />
                   </div>
@@ -692,7 +683,6 @@ export default function Home() {
                     ["Lower contrast", "contrast(.72)"],
                   ].map(([name, filter]) => (
                     <div className="robustTile" key={name}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img decoding="async" loading="lazy" src={LESION_IMAGE} alt="" style={{ filter }} />
                       <span>{name}</span>
                     </div>
@@ -769,7 +759,6 @@ export default function Home() {
               >
                 {preview ? (
                   <div className="sandboxPreview">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={preview} alt="Selected lesion preview" />
                     <div className="previewMeta">
                       <span>{file?.name}</span>
@@ -918,7 +907,6 @@ export default function Home() {
                       <span className="compareLabel">Original</span>
                       <div className="compareImage">
                         {preview && (
-                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img src={preview} alt="Original uploaded lesion" />
                         )}
                       </div>
@@ -926,7 +914,6 @@ export default function Home() {
                     <div>
                       <span className="compareLabel">Grad-CAM</span>
                       <div className="compareImage">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={result.heatmap_data_url} alt="Grad-CAM attention map" />
                       </div>
                     </div>
