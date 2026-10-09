@@ -38,6 +38,11 @@ updates:
       # Types should match the Node version the site runs on (20).
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # ESLint and its rule packages move together, by hand.
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
