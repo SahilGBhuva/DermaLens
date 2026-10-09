@@ -1,0 +1,95 @@
+name: External evaluation (PAD-UFES-20)
+
+# Runs the published v1 and v2 models, unchanged, on PAD-UFES-20 smartphone
+# photos (CC BY 4.0, doi:10.17632/zr7vgbcyr2.1). Everything happens on the
+# GitHub runner, so the 3.6 GB dataset never has to be downloaded to a laptop.
+# Only the small results file is kept, as a workflow artifact. Started by hand.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pad-ufes-20:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install CPU PyTorch and the ml/ pins
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu \
+            "$(grep '^torch==' ml/requirements.txt)" "$(grep '^torchvision==' ml/requirements.txt)"
+          grep -v '^torch' ml/requirements.txt > /tmp/ml-rest.txt
+          pip install -r /tmp/ml-rest.txt
+
+      - name: Download the published models (checked against the pinned hashes)
+        run: |
+          PYTHONPATH=backend python - <<'EOF'
+          from pathlib import Path
+          from app.registry import PINNED_SHA256, fetch_releases
+
+          base = "https://github.com/SahilGBhuva/DermaLens/releases/download"
+          fetch_releases(Path("models"), [(v, f"{base}/model-{v}") for v in ("v1", "v2")])
+          for version, files in PINNED_SHA256.items():
+              for name in files:
+                  if not (Path("models") / version / name).exists():
+                      raise SystemExit(f"models/{version}/{name} missing or failed its hash check")
+          print("models verified")
+          EOF
+
+      - name: Download PAD-UFES-20 (checked against Mendeley's SHA-256)
+        run: |
+          set -euo pipefail
+          D="$RUNNER_TEMP/pad"
+          mkdir -p "$D/images"
+          M=https://data.mendeley.com/public-files/datasets/zr7vgbcyr2/files
+          curl -fsSL --retry 3 -o "$D/metadata.csv" "$M/fa850265-57da-48f0-ba3e-998b3e44b1f6/file_downloaded"
+          echo "14d145235cedb022548257acb0d84dcd949e2c916f65d2baa7c38ed5339e9527  $D/metadata.csv" | sha256sum -c -
+          while read -r id hash; do
+            curl -fsSL --retry 3 -o "$D/part.zip" "$M/$id/file_downloaded"
+            echo "$hash  $D/part.zip" | sha256sum -c -
+            # Flatten the archive's folders; keep only the images.
+            unzip -q -j -o "$D/part.zip" '*.png' -d "$D/images"
+            rm "$D/part.zip"
+          done <<'PARTS'
+          1cc2f71f-20a2-412d-b746-a9b9bc20c966 0ab44f60938bf57445e12f518a8878954cc734e6b0aec6d01194e2d26b4b2dca
+          559a60ed-5504-475d-996c-6a8bc253b5e7 e2d9a3cbd58e823f5ae33163c48643e7d1b54ae3f9e145f01f8e9f16a363a60b
+          34dcdf8e-e5f1-4b35-aa0b-5135051ff852 ecc4ef10143a43e1d01cb736773148607a78b530417eb76f2c38ad24bf5d0d2c
+          PARTS
+          echo "images: $(ls "$D/images" | wc -l)"
+
+      - name: Evaluate v1 and v2
+        working-directory: ml
+        run: |
+          python evaluate_external.py \
+            --metadata "$RUNNER_TEMP/pad/metadata.csv" \
+            --images-dir "$RUNNER_TEMP/pad/images" \
+            --models ../models/v1,../models/v2 \
+            --output ../results/pad_ufes_20.json
+
+      - name: Summary
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          d = json.load(open("results/pad_ufes_20.json"))
+          print("## PAD-UFES-20 (smartphone photos), models unchanged\n")
+          print("| Model | Images | Accuracy | Balanced accuracy | Melanoma sensitivity | Calibration error | Concerning lesions flagged |")
+          print("|---|---|---|---|---|---|---|")
+          for v, m in d["models"].items():
+              print(f"| {v} | {m['images_scored']} | {m['accuracy']:.3f} | {m['balanced_accuracy']:.3f} | "
+                    f"{m['melanoma_sensitivity']:.3f} | {m['expected_calibration_error']:.3f} | "
+                    f"{m['concerning_lesions']['sensitivity']:.3f} |")
+          EOF
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pad-ufes-20-results
+          path: results/pad_ufes_20.json
+          retention-days: 90
