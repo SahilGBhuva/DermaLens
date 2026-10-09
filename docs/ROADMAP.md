@@ -43,6 +43,13 @@ Ask a dermatologist or a medical-imaging researcher to review the interface word
 
 A short research report in paper format (abstract, methods, results with confidence intervals, limitations), plus a poster and the demo video. Possible venues: a preprint, a student research journal, or a science fair.
 
+## Maintenance (held upgrades)
+
+These are planned by hand rather than merged from Dependabot:
+
+- **Next.js 16 and TypeScript 7** (major releases). Upgrade on a branch, run the full check list, and compare the live site before merging.
+- **ml/ package versions** stay at the exact versions v1 and v2 were trained with. Move them together when training v3, and record the new versions in that model's card.
+
 ## Principles that stay fixed
 
 - The test split is scored once per model; every choice is made on validation data.

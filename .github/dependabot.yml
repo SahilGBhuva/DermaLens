@@ -13,10 +13,10 @@ updates:
     directory: /ml
     schedule:
       interval: weekly
-    # Wait a week before proposing a brand-new release (security updates are not delayed).
-    cooldown:
-      default-days: 7
-    open-pull-requests-limit: 5
+    # The ml/ pins are the exact versions v1 and v2 were trained with, so
+    # results stay reproducible. 0 turns off version-update PRs only;
+    # Dependabot still opens security-update PRs and alerts.
+    open-pull-requests-limit: 0
   - package-ecosystem: npm
     directory: /frontend
     schedule:
@@ -25,6 +25,15 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    # Major upgrades are planned by hand (see docs/ROADMAP.md), not merged weekly.
+    ignore:
+      - dependency-name: next
+        update-types: ["version-update:semver-major"]
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # Types should match the Node version the site runs on (20).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
