@@ -18,9 +18,11 @@ DermaLens is a long-term research project. Each stage below is meant to produce 
 - Report **bootstrap confidence intervals** for every test metric. Rare classes (dermatofibroma, vascular) have very few test images.
 - Be explicit that v3 was designed after seeing v2's test results. That makes stage 2 essential.
 
-### 2. External validation (the most important credibility step)
+### 2. External validation (the most important credibility step) — first run done
 
-Test v1, v2 and v3, unchanged, on a dataset the models never saw, from different clinics and cameras. Candidates: ISIC challenge datasets, or PAD-UFES-20 (smartphone images, a harder domain shift). **Check each dataset's licence and terms before downloading.** Expect performance to drop, and report by how much. That drop is the honest answer to "would this work elsewhere?" PAD-UFES-20 matters most now: the website accepts regular photos (flagged as less accurate), so measuring accuracy on smartphone images would replace "not measured yet" with a real number.
+Test v1, v2 and v3, unchanged, on a dataset the models never saw, from different clinics and cameras. Candidates: ISIC challenge datasets, or PAD-UFES-20 (smartphone images, a harder domain shift). **Check each dataset's licence and terms before downloading.** Expect performance to drop, and report by how much. That drop is the honest answer to "would this work elsewhere?"
+
+**Done for PAD-UFES-20 (2026-10-08):** balanced accuracy fell from 0.73 on dermoscopy to 0.29 (v1) and 0.31 (v2) on smartphone photos (chance is 0.20); v2 caught 38% of melanomas. Details in `MODEL_CARD.md`. Still to do: a second dermoscopy dataset from another clinic (for example an ISIC challenge set), to separate "different camera" from "different clinic", and bootstrap intervals for every metric.
 
 ### 3. Does the attention look at the lesion?
 

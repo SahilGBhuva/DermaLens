@@ -107,7 +107,9 @@ def release_memory():
 IMAGE_TYPES = {"dermoscopy", "photo"}
 PHOTO_NOTE = (
     "Regular photo: DermaLens was trained on dermoscopy images, so results on everyday "
-    "photos are less accurate, and that accuracy has not been measured yet."
+    "photos are much less accurate. On 2,298 smartphone photos (PAD-UFES-20) the default "
+    "model was right about 3 times in 10 and caught about 4 in 10 melanomas. Treat this "
+    "result as a demonstration only."
 )
 
 

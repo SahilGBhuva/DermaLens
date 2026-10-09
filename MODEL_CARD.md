@@ -63,7 +63,7 @@ Grad-CAM indicates model attention, not medical causality or clinical correctnes
 
 **It always answers with one of seven classes.** The model has no "this is not a skin lesion" option: random noise, a phone photo, or a picture of something else still gets a top class. In testing, random-noise images received low scores (27–41%), which the interface labels "inconclusive", but low scores are not a reliable detector of invalid input. Only dermatoscopic lesion images are in scope.
 
-**Regular photos are accepted but flagged.** Users can choose "Regular photo" instead of "Dermoscopy" (`image_type=photo` in the API). The image goes through the same model, and the result carries a reliability note saying everyday photos are outside the training data and less accurate. That accuracy has not been measured yet (see the roadmap's external-validation step); until it is, photo results should be treated as a demonstration only.
+**Regular photos are accepted but flagged.** Users can choose "Regular photo" instead of "Dermoscopy" (`image_type=photo` in the API). The image goes through the same model, and the result carries a reliability note with the measured accuracy on smartphone photos (see "External check" below): much lower than on dermoscopy, so photo results are a demonstration only.
 
 ## Explainability output
 
@@ -145,6 +145,30 @@ What changed, honestly:
 2. Constrain sensitivity for all malignant or pre-malignant classes (mel, bcc, akiec), not just melanoma.
 3. Report a confidence interval for every per-class number; df and vasc have very few test images.
 4. Because v3 would be designed after seeing v2's test results, its test score should be reported as such, or validated on an external dataset (e.g. ISIC 2019/2020).
+
+## External check — smartphone photos, PAD-UFES-20 (2026-10-08)
+
+Both versions were run **unchanged** (same preprocessing, flip-averaging and calibration as the API) on [PAD-UFES-20](https://data.mendeley.com/datasets/zr7vgbcyr2/1): 2,298 clinical photos taken with smartphones at a free skin clinic in Brazil (Pacheco et al., 2020, CC BY 4.0). Nothing was tuned on it. The run happened on a GitHub Actions runner with every download checked by SHA-256 (`.github/workflows/external-eval.yml`); the full output is [`docs/results/pad_ufes_20.json`](docs/results/pad_ufes_20.json), tied to the weight hashes.
+
+Five of its six diagnoses map onto DermaLens classes (ACK→akiec, BCC→bcc, MEL→mel, NEV→nv, SEK→bkl): 2,106 images. Invasive squamous cell carcinoma (192 images) has no DermaLens class and is scored only on whether it was flagged as akiec, bcc or mel.
+
+| | v1 | v2 | v2 on dermoscopy (HAM10000 test) |
+|---|---|---|---|
+| Accuracy | 0.302 | 0.272 | 0.785 |
+| Balanced accuracy (5 classes; chance = 0.20) | 0.292 | 0.312 | 0.733 |
+| Melanoma sensitivity | **4/52 = 8%** (95% CI 3–18%) | **20/52 = 38%** (95% CI 26–52%) | 0.781 |
+| Calibration error (ECE) | 0.372 | 0.281 | 0.315 |
+| Concerning lesions flagged (ACK, BCC, MEL, SCC) | 46% | 44% | — |
+| Benign lesions not flagged (NEV, SEK) | 89% | 84% | — |
+| SCC flagged as concerning | 47% | 46% | — |
+
+Per class (sensitivity, v1 / v2): actinic keratosis 8% / 2% (730 images), basal cell carcinoma 43% / 43% (845), melanoma 8% / 38% (52), nevus 71% / 46% (244), seborrheic keratosis 17% / 27% (235).
+
+**What this shows.** Performance falls from well above chance to only a little above it when the camera changes from a dermatoscope to a phone. That is the domain shift the roadmap warned about, now measured. v2's melanoma tuning still helps relatively (5× more melanomas caught than v1), but 38% is far too low to rely on. Actinic keratoses, the largest group here, are almost never recognised. Most missed melanomas were called nevi.
+
+**Skin type.** Accuracy by Fitzpatrick type (mapped classes, v1 / v2): I–II 36% / 36% (887 images), III–IV 35% / 33% (406), V–VI 22% / 11% (only 9 images: too few to conclude anything), not recorded 21% / 16% (804). This dataset cannot answer the fairness question for darker skin.
+
+**Caveats.** The class mix is very different from HAM10000 (mostly BCC and ACK), labels are partly clinical rather than biopsy-proven, and the class mapping is approximate (HAM10000's "benign keratosis-like" is broader than seborrheic keratosis). The numbers describe these two models on this dataset only.
 
 ## Not clinically ready
 

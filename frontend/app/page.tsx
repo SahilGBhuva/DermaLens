@@ -851,9 +851,10 @@ export default function Home() {
                 </div>
                 {imageType === "photo" && (
                   <p>
-                    Less accurate: the model learned from dermoscopy images. For the best
-                    attempt, fill the frame with the spot, use even daylight, keep it in focus
-                    and avoid flash glare.
+                    Much less accurate: the model learned from dermoscopy images, and on 2,298
+                    tested phone photos it was right about 3 times in 10. For the best attempt,
+                    fill the frame with the spot, use even daylight, keep it in focus and avoid
+                    flash glare.
                   </p>
                 )}
               </div>

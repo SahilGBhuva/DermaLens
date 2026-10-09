@@ -13,6 +13,7 @@ DermaLens is an educational/research web app for experimenting with machine-lear
 - **Held-out test results** (1,494 images, each scored once):
   - v1: accuracy 0.801 · balanced accuracy 0.741 · **melanoma sensitivity 0.64** · calibration error 0.05
   - v2: accuracy 0.785 · balanced accuracy 0.733 · **melanoma sensitivity 0.78** · calibration error 0.32 — catches 26 more melanomas, at the cost of more false alarms, lower sensitivity for two other cancers, and poorly calibrated percentages. The trade-off is analysed in [`MODEL_CARD.md`](MODEL_CARD.md).
+- **Tested on phone photos too** (PAD-UFES-20, 2,298 smartphone images the models never saw): balanced accuracy drops to 0.29–0.31 (chance is 0.20) and v2 catches 38% of melanomas, so the site labels regular photos "much less accurate". See [`MODEL_CARD.md`](MODEL_CARD.md).
 - **Honesty by design:** metrics are only shown for the exact model file being served (SHA-256 checked); illustrative sections are labelled; every result says it is not a diagnosis.
 - **Quality:** 43 API tests and 13 ML tests, ESLint on the site, all run in CI; security-hardened API (see [`SECURITY.md`](SECURITY.md)), load-tested inside a 512 MB container.
 - **Docs:** [`DEPLOY.md`](DEPLOY.md) (cloud setup) · [`SECURITY.md`](SECURITY.md) · [`docs/DEMO.md`](docs/DEMO.md) (demo script) · [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/STUDY_GUIDE.md`](docs/STUDY_GUIDE.md).
