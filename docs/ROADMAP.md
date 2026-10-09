@@ -48,6 +48,7 @@ A short research report in paper format (abstract, methods, results with confide
 These are planned by hand rather than merged from Dependabot:
 
 - **Next.js 16 and TypeScript 7** (major releases). Upgrade on a branch, run the full check list, and compare the live site before merging.
+- **Python 3.12 for the API image.** numpy 2.3 and later need it; until then the backend stays on numpy 2.2.
 - **ml/ package versions** stay at the exact versions v1 and v2 were trained with. Move them together when training v3, and record the new versions in that model's card.
 
 ## Principles that stay fixed
