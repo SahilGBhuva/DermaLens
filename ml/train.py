@@ -1,6 +1,7 @@
 import argparse
 import json
 import random
+import time
 from pathlib import Path
 
 import numpy as np
@@ -60,14 +61,16 @@ def make_transforms(train: bool):
     )
 
 
-def evaluate(model, loader, criterion, device):
+def evaluate(model, loader, criterion, device, tta: bool = True):
     model.eval()
     loss_sum, ys, preds = 0.0, [], []
     with torch.inference_mode():
         for images, labels in loader:
             images, labels = images.to(device), labels.to(device)
-            loss_sum += criterion(model(images), labels).item() * images.size(0)
-            preds.append(predict_proba_tta(model, images).argmax(1).cpu())
+            logits = model(images)
+            loss_sum += criterion(logits, labels).item() * images.size(0)
+            probs = predict_proba_tta(model, images) if tta else torch.softmax(logits, dim=1)
+            preds.append(probs.argmax(1).cpu())
             ys.append(labels.cpu())
     y = torch.cat(ys).numpy()
     p = torch.cat(preds).numpy()
@@ -81,7 +84,20 @@ def evaluate(model, loader, criterion, device):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train-csv", required=True)
-    parser.add_argument("--val-csv", required=True)
+    parser.add_argument(
+        "--val-csv",
+        required=True,
+        nargs="+",
+        help="one or more validation CSVs; with several (e.g. two image domains) the epoch is "
+        "chosen on the mean of their balanced accuracies, so each domain counts equally",
+    )
+    parser.add_argument("--init-weights", default=None, help="start from these weights instead of ImageNet")
+    parser.add_argument(
+        "--val-tta",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="flip-average during per-epoch validation (slower; final scoring always uses the config)",
+    )
     parser.add_argument("--epochs", type=int, default=25)
     parser.add_argument("--patience", type=int, default=6, help="stop after this many epochs without a better validation balanced accuracy")
     parser.add_argument("--batch-size", type=int, default=32)
@@ -104,7 +120,7 @@ def main():
 
     class_to_idx = {name: i for i, name in enumerate(CLASSES)}
     train_ds = SkinLesionDataset(args.train_csv, class_to_idx, make_transforms(True))
-    val_ds = SkinLesionDataset(args.val_csv, class_to_idx, make_transforms(False))
+    val_sets = {Path(path).stem: SkinLesionDataset(path, class_to_idx, make_transforms(False)) for path in args.val_csv}
 
     device = pick_device()
     print(f"training on {device}", flush=True)
@@ -127,9 +143,15 @@ def main():
         num_workers=workers, pin_memory=device.type == "cuda",
         drop_last=len(train_ds) > args.batch_size,
     )
-    val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=workers)
+    val_loaders = {
+        name: DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=workers)
+        for name, ds in val_sets.items()
+    }
 
-    model = build_model(pretrained=True).to(device)
+    model = build_model(pretrained=args.init_weights is None).to(device)
+    if args.init_weights:
+        model.load_state_dict(torch.load(args.init_weights, map_location=device, weights_only=True))
+        print(f"starting from {args.init_weights}", flush=True)
     class_weights = torch.tensor(weights, dtype=torch.float32, device=device)
     if args.loss == "focal":
         criterion = FocalLoss(class_weights, gamma=2.0, label_smoothing=args.label_smoothing).to(device)
@@ -151,6 +173,7 @@ def main():
 
     best, stale, history = -1.0, 0, []
     for epoch in range(args.epochs):
+        started = time.monotonic()
         model.train()
         loss_sum, correct = 0.0, 0
         for images, labels_tensor in train_loader:
@@ -167,7 +190,8 @@ def main():
         scheduler.step()
 
         seen = len(train_loader) * args.batch_size if train_loader.drop_last else len(train_ds)
-        val = evaluate(model, val_loader, criterion, device)
+        vals = {name: evaluate(model, loader, criterion, device, args.val_tta) for name, loader in val_loaders.items()}
+        val = {key: float(np.mean([v[key] for v in vals.values()])) for key in ("loss", "accuracy", "balanced_accuracy")}
         row = {
             "epoch": epoch + 1,
             "train_loss": loss_sum / seen,
@@ -176,7 +200,11 @@ def main():
             "val_accuracy": val["accuracy"],
             "val_balanced_accuracy": val["balanced_accuracy"],
             "lr": optimizer.param_groups[0]["lr"],
+            "seconds": round(time.monotonic() - started, 1),
         }
+        if len(vals) > 1:
+            for name, v in vals.items():
+                row[f"val_balanced_accuracy_{name}"] = v["balanced_accuracy"]
         history.append(row)
         print(json.dumps(row), flush=True)
 

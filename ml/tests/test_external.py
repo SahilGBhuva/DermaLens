@@ -58,3 +58,23 @@ def test_metadata_rejects_unknown_codes_and_missing_images(tmp_path):
     pd.DataFrame({"img_id": ["nope.png"], "diagnostic": ["NEV"]}).to_csv(missing, index=False)
     with pytest.raises(FileNotFoundError):
         load_metadata(missing, tmp_path)
+
+
+def test_pad_split_keeps_each_patient_in_one_split():
+    from prepare_pad_ufes_20 import TRAIN_LABELS, split_by_patient
+
+    rng = np.random.default_rng(0)
+    codes = ["ACK", "BCC", "MEL", "NEV", "SEK", "SCC"]
+    frame = pd.DataFrame(
+        {
+            "patient_id": [f"P{i // 3}" for i in range(600)],
+            "diagnostic": [codes[i] for i in rng.integers(0, len(codes), 600)],
+        }
+    )
+    split = split_by_patient(frame)
+    per_patient = frame.assign(split=split).groupby("patient_id")["split"].nunique()
+    assert (per_patient == 1).all()
+    shares = split.value_counts(normalize=True)
+    assert abs(shares["test"] - 0.2) < 0.05 and abs(shares["val"] - 0.2) < 0.05
+    assert split.equals(split_by_patient(frame))  # fixed seed, same answer
+    assert TRAIN_LABELS["SCC"] == "akiec" and set(TRAIN_LABELS) == set(codes)
