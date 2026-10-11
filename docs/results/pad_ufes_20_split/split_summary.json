@@ -1,0 +1,38 @@
+{
+  "train": {
+    "images": 1397,
+    "patients": 823,
+    "diagnostic_counts": {
+      "BCC": 501,
+      "ACK": 451,
+      "NEV": 151,
+      "SEK": 144,
+      "SCC": 120,
+      "MEL": 30
+    }
+  },
+  "val": {
+    "images": 441,
+    "patients": 277,
+    "diagnostic_counts": {
+      "BCC": 171,
+      "ACK": 135,
+      "NEV": 48,
+      "SEK": 43,
+      "SCC": 35,
+      "MEL": 9
+    }
+  },
+  "test": {
+    "images": 460,
+    "patients": 273,
+    "diagnostic_counts": {
+      "BCC": 173,
+      "ACK": 144,
+      "SEK": 48,
+      "NEV": 45,
+      "SCC": 37,
+      "MEL": 13
+    }
+  }
+}

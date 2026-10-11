@@ -49,6 +49,8 @@ type ResearchStatus = {
   };
   implemented: Record<string, boolean>;
   note: string;
+  // Every served version, so a result can be read against its own model's evaluation.
+  models?: { model?: { version?: string }; evaluation: ResearchStatus["evaluation"] }[];
 };
 
 const labels: Record<string, string> = {
@@ -90,6 +92,7 @@ async function postImage(path: string, file: File, failure: string) {
 const modelNotes: Record<string, string> = {
   v1: "v1 is balanced across classes and its scores are well calibrated.",
   v2: "v2 was tuned to catch more melanomas, at the cost of more false alarms.",
+  v3: "v3 also learned from phone photos: far better on them, but it flags more harmless moles.",
 };
 
 const imageTypesByExtension: Record<string, string> = {
@@ -152,6 +155,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [apiOnline, setApiOnline] = useState<boolean | null>(null);
   const [models, setModels] = useState<string[]>([]);
+  const [photoModel, setPhotoModel] = useState<string | null>(null);
   // A second model's scores for the same image ("second opinion").
   const [comparison, setComparison] = useState<Prediction | null>(null);
   const [comparing, setComparing] = useState(false);
@@ -166,6 +170,10 @@ export default function Home() {
   const dragDepth = useRef(0);
 
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
+  // The evaluation of the model that produced this result (versions differ).
+  const resultEvaluation =
+    research?.models?.find((entry) => entry.model?.version === result?.model_version)?.evaluation ??
+    research?.evaluation;
   const otherModel = result?.model_version
     ? models.find((version) => version !== result.model_version)
     : undefined;
@@ -187,6 +195,7 @@ export default function Home() {
       const health = healthResult.status === "fulfilled" ? healthResult.value : null;
       setApiOnline(Boolean(health));
       setModels(Array.isArray(health?.models) ? health.models : []);
+      setPhotoModel(typeof health?.photo_model === "string" ? health.photo_model : null);
     });
   }, []);
 
@@ -851,10 +860,11 @@ export default function Home() {
                 </div>
                 {imageType === "photo" && (
                   <p>
-                    Much less accurate: the model learned from dermoscopy images, and on 2,298
-                    tested phone photos it was right about 3 times in 10. For the best attempt,
-                    fill the frame with the spot, use even daylight, keep it in focus and avoid
-                    flash glare.
+                    {photoModel === "v3"
+                      ? "Analysed by v3, which also learned from phone photos: right about 7 times in 10 on held-out phone photos, but it flags many harmless moles."
+                      : "Much less accurate: this model learned from dermoscopy images only, and on 2,298 tested phone photos it was right about 3 times in 10."}{" "}
+                    For the best attempt, fill the frame with the spot, use even daylight, keep it
+                    in focus and avoid flash glare.
                   </p>
                 )}
               </div>
@@ -1000,12 +1010,13 @@ export default function Home() {
                     <strong>{Math.round(result.confidence * 100)}%</strong>
                   </div>
                   {result.reliability_note && <p className="photoNote">{result.reliability_note}</p>}
-                  {typeof research?.evaluation?.expected_calibration_error === "number" &&
-                    research.evaluation.expected_calibration_error > 0.1 && (
+                  {result.image_type !== "photo" &&
+                    typeof resultEvaluation?.expected_calibration_error === "number" &&
+                    resultEvaluation.expected_calibration_error > 0.1 && (
                       <p className="calibrationNote">
                         These percentages are model scores, not probabilities: on held-out tests this
                         model&apos;s stated confidence was off by about{" "}
-                        {Math.round(research.evaluation.expected_calibration_error * 100)} points on
+                        {Math.round(resultEvaluation.expected_calibration_error * 100)} points on
                         average. Compare the classes rather than reading the number literally.
                       </p>
                     )}

@@ -30,6 +30,7 @@ Each model version is one GitHub Release holding its four files, taken from that
 |---|---|
 | `model-v1` | `models/v1/`: `dermalens_efficientnet_b0.pt`, `model_config.json`, `evaluation.json`, `training_history.json` |
 | `model-v2` | `models/v2/`: same four files |
+| `model-v3` | `models/v3/`: same four files (also trained on PAD-UFES-20, CC BY 4.0) |
 
 On GitHub: **Releases → Draft a new release**, set the tag, attach the four files, and note in the description that the weights were trained on HAM10000 (CC BY-NC 4.0; Tschandl, Rosendahl & Kittler, 2018). Or from a terminal:
 
@@ -45,11 +46,12 @@ gh release create model-v1 models/v1/* --title "DermaLens model v1" --notes "Tra
 1. https://render.com → sign in with GitHub → **New → Blueprint** → choose this repo. Render reads `render.yaml`.
 2. Fill the environment variables it asks for:
    - `MODEL_RELEASES` — every version to serve, **default first**:
-     `v2=https://github.com/SahilGBhuva/DermaLens/releases/download/model-v2,v1=https://github.com/SahilGBhuva/DermaLens/releases/download/model-v1`
+     `v2=https://github.com/SahilGBhuva/DermaLens/releases/download/model-v2,v3=https://github.com/SahilGBhuva/DermaLens/releases/download/model-v3`
+     (v2 answers dermoscopy; regular photos go to `PHOTO_MODEL`, default `v3`)
    - `CORS_ORIGINS` — your Vercel address from step 4 (you can come back and set it after)
-3. Deploy. When it is live, open `https://<your-api>.onrender.com/health` — it should list `"models": ["v2", "v1"]`.
+3. Deploy. When it is live, open `https://<your-api>.onrender.com/health` — it should list `"models": ["v2", "v3"]` and `"photo_model": "v3"`.
 
-Memory: with both versions, local CPU measurements peaked around 470 MB under 12 concurrent requests (free limit 512 MB; one analysis runs at a time). If the free instance is ever OOM-killed, serve one version (`MODEL_RELEASES=v2=...`) or move to the Starter plan.
+Memory: with two versions, local CPU measurements peaked around 470 MB under 12 concurrent requests (free limit 512 MB; one analysis runs at a time). If the free instance is ever OOM-killed, serve one version (`MODEL_RELEASES=v2=...`) or move to the Starter plan.
 
 Single-model deployments can still use `MODEL_URL`, `CONFIG_URL`, `EVALUATION_URL` and `HISTORY_URL` instead.
 

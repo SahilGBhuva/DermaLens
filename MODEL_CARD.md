@@ -170,6 +170,42 @@ Per class (sensitivity, v1 / v2): actinic keratosis 8% / 2% (730 images), basal 
 
 **Caveats.** The class mix is very different from HAM10000 (mostly BCC and ACK), labels are partly clinical rather than biopsy-proven, and the class mapping is approximate (HAM10000's "benign keratosis-like" is broader than seborrheic keratosis). The numbers describe these two models on this dataset only.
 
+## Results — v3 (2026-10-09): dermoscopy + smartphone photos
+
+**What changed:** v2's weights, fine-tuned for up to 8 epochs (learning rate 1e-4, balanced sampling, cross-entropy) on PAD-UFES-20 smartphone photos plus a class-stratified replay of 2,999 HAM10000 training images, so dermoscopy is not forgotten. PAD-UFES-20 was split **by patient** (60/20/20, stratified, seed 42; 1,397 / 441 / 460 images from 823 / 277 / 273 patients; the split is in [`docs/results/pad_ufes_20_split/`](docs/results/pad_ufes_20_split/)). Invasive SCC was trained as akiec, its nearest DermaLens class. The epoch (7 of 8) was chosen on **validation only**, by the mean balanced accuracy of the dermoscopy and phone validation splits; calibration used the same method as v2 on both validation splits together. Each test split was then scored once. Run on a GitHub Actions CPU runner (`.github/workflows/train-v3.yml`, run 38000061783) with every download hash-checked.
+
+**Weights SHA-256:** `e0cf8e628dd81a5780e0bc5338c56908de47beec2a877fbbab02d0782fe8ecb2`
+
+**Smartphone photos — PAD-UFES-20 test patients** (423 mapped images + 37 SCC; v1 and v2 scored on the same images; full output in [`docs/results/v3_pad_ufes_20_test.json`](docs/results/v3_pad_ufes_20_test.json)):
+
+| | v1 | v2 | v3 |
+|---|---|---|---|
+| Accuracy | 0.314 | 0.298 | **0.714** |
+| Balanced accuracy (5 classes; chance = 0.20) | 0.322 | 0.363 | **0.654** |
+| Melanoma sensitivity | 1/13 | 7/13 | **11/13** (95% CI 58–96%) |
+| Calibration error (ECE) | 0.341 | 0.237 | **0.050** |
+| Concerning lesions flagged (ACK, BCC, MEL, SCC) | 47% | 46% | **97%** |
+| Benign lesions not flagged (NEV, SEK) | 87% | 85% | 66% |
+| SCC flagged as concerning | 38% | 41% | 97% |
+
+Per class on phone photos (v3 sensitivity): actinic keratosis 78%, basal cell carcinoma 80%, melanoma 85%, seborrheic keratosis 73%, **nevus 11% (5/45)**: of 45 moles, 20 were called benign keratosis and 19 were flagged as concerning (8 melanoma, 8 basal cell carcinoma, 3 actinic keratosis).
+
+**Dermoscopy — HAM10000 test split** (the same 1,494 images as v1 and v2):
+
+| | v2 | v3 |
+|---|---|---|
+| Accuracy | **0.785** | 0.718 |
+| Balanced accuracy | **0.733** | 0.662 |
+| Melanoma sensitivity | 0.781 | 0.797 |
+| Macro one-vs-rest ROC-AUC | 0.902 | **0.919** |
+| Calibration error (ECE) | 0.315 | **0.111** |
+
+Per class (sensitivity, v2 → v3): akiec 0.46 → 0.32, bcc 0.76 → 0.68, bkl 0.63 → 0.68, df 0.71 → 0.57, mel 0.78 → 0.80, nv 0.83 → 0.73, vasc 0.95 → 0.86.
+
+**Trade-offs.** v3 turns smartphone photos from near-chance into useful screening-style output: almost every concerning lesion is flagged and its scores are well calibrated. The cost is false alarms on moles, and a 7-point drop in dermoscopy balanced accuracy (its ranking, ROC-AUC, slightly improved and its calibration improved a lot). The phone test patients come from the **same clinic** as the training photos, so this is not an external test: other phones, clinics and populations may do worse. Only one test image was Fitzpatrick V–VI, so skin-tone fairness remains untested. Calibration again raised validation NLL (0.58 → 0.99) while improving balanced accuracy, the probabilities-versus-decisions problem the roadmap describes.
+
+**How it is served.** The API sends **regular photos to v3** and **dermoscopy to v2** (`PHOTO_MODEL`, default `v3`); the second opinion compares the two. v1 is no longer served (memory on the free instance) but stays published as `model-v1`.
+
 ## Not clinically ready
 
 DermaLens is a research and education project. Before any clinical use it would still need, at minimum: external validation on independent datasets and devices, review by dermatologists, prospective testing, evaluation across skin tones, privacy and security work, and regulatory review. None of these has been done.

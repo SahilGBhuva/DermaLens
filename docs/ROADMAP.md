@@ -11,7 +11,9 @@ DermaLens is a long-term research project. Each stage below is meant to produce 
 
 ## Next stages, in order
 
-### 1. v3: fix v2's trade-offs
+### 1. v3: phone photos — done (2026-10-09); v4: fix the trade-offs
+
+v3 (v2 fine-tuned on PAD-UFES-20 + dermoscopy replay) made phone photos usable: balanced accuracy 0.36 → 0.65 on held-out patients, 97% of concerning lesions flagged. It also raised false alarms on moles and lowered dermoscopy balanced accuracy to 0.66. The items below carry over to v4:
 
 - Keep **probabilities** and **decisions** separate. Calibrate probabilities by validation likelihood (temperature or vector scaling), then choose decision thresholds separately.
 - Protect **every malignant or pre-malignant class** (melanoma, basal cell carcinoma, actinic keratosis / intraepithelial carcinoma) with sensitivity floors, not just melanoma.

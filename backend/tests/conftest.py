@@ -1,9 +1,14 @@
 import hashlib
 import json
+import os
 
 import pytest
 import torch
 from torchvision import models
+
+# The app's per-client limit (30 analyses per 10 minutes) is tested with its own
+# guard in test_security.py; the shared test client sends more than 30 requests.
+os.environ.setdefault("RATE_LIMIT_REQUESTS", "1000")
 
 CLASSES = ["akiec", "bcc", "bkl", "df", "mel", "nv", "vasc"]
 

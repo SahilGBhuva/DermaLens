@@ -102,15 +102,35 @@ def release_memory():
         _LIBC.malloc_trim(0)
 
 
-# The models were trained on dermatoscopic images (HAM10000). Everyday photos
-# are accepted, analysed the same way, and clearly flagged as less reliable.
+# v1 and v2 learned only from dermatoscopic images (HAM10000); v3 also learned
+# from smartphone photos (PAD-UFES-20). Everyday photos go to PHOTO_MODEL when
+# it is served, and every photo result says how reliable that model measured.
 IMAGE_TYPES = {"dermoscopy", "photo"}
-PHOTO_NOTE = (
-    "Regular photo: DermaLens was trained on dermoscopy images, so results on everyday "
-    "photos are much less accurate. On 2,298 smartphone photos (PAD-UFES-20) the default "
-    "model was right about 3 times in 10 and caught about 4 in 10 melanomas. Treat this "
-    "result as a demonstration only."
+PHOTO_MODEL = os.getenv("PHOTO_MODEL", "v3")
+PHOTO_NOTES = {
+    "v3": (
+        "Regular photo, analysed by v3, which also learned from smartphone photos. On 460 "
+        "held-out phone photos it was right about 7 times in 10 and flagged almost every "
+        "cancer-type spot, but it also flagged many harmless moles. All its phone photos came "
+        "from one clinic, so treat this result as a demonstration only."
+    ),
+}
+PHOTO_NOTE_DERMOSCOPY_ONLY = (
+    "Regular photo: this model was trained on dermoscopy images only, so results on everyday "
+    "photos are much less accurate. On 2,298 smartphone photos (PAD-UFES-20) it was right "
+    "about 3 times in 10. Treat this result as a demonstration only."
 )
+
+
+def photo_note(version: str) -> str:
+    return PHOTO_NOTES.get(version, PHOTO_NOTE_DERMOSCOPY_ONLY)
+
+
+def pick_model(model: str | None, image_type: str) -> ModelEntry:
+    """The requested version, else the photo model for photos, else the default."""
+    if model is None and image_type == "photo" and registry.get(PHOTO_MODEL) is not None:
+        model = PHOTO_MODEL
+    return resolve(model)
 
 
 def check_image_type(image_type: str) -> str:
@@ -149,6 +169,7 @@ def health():
         "model_loaded": bool(loaded),
         "models": loaded,
         "default_model": registry.default if loaded else None,
+        "photo_model": PHOTO_MODEL if PHOTO_MODEL in loaded else (registry.default if loaded else None),
     }
 
 
@@ -275,14 +296,14 @@ async def predict(
     explain: bool = Query(True, description="false skips Grad-CAM (scores only)"),
 ):
     image_type = check_image_type(image_type)
-    entry = resolve(model)
+    entry = pick_model(model, image_type)
     image = await load_image(file)
     result = await run_inference(partial(entry.model.predict, explain=explain), image)
 
     return {
         "model_version": entry.version,
         "image_type": image_type,
-        "reliability_note": PHOTO_NOTE if image_type == "photo" else None,
+        "reliability_note": photo_note(entry.version) if image_type == "photo" else None,
         "top_class": result.top_class,
         "confidence": result.confidence,
         "uncertainty": result.uncertainty,
@@ -304,7 +325,7 @@ async def stress_test(
     image_type: str = Query("dermoscopy", max_length=16),
 ):
     image_type = check_image_type(image_type)
-    entry = resolve(model)
+    entry = pick_model(model, image_type)
     image = await load_image(file)
     return {
         "model_version": entry.version,

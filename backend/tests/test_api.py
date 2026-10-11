@@ -153,8 +153,32 @@ def test_regular_photos_are_accepted_and_flagged():
     files = {"file": ("lesion.png", make_png(), "image/png")}
     photo = client.post("/predict?image_type=photo", files=files).json()
     assert photo["image_type"] == "photo"
-    assert "less accurate" in photo["reliability_note"]
+    assert "demonstration only" in photo["reliability_note"]
     derm = client.post("/predict", files=files).json()
     assert derm["image_type"] == "dermoscopy" and derm["reliability_note"] is None
     assert client.post("/stress-test?image_type=photo", files=files).json()["image_type"] == "photo"
     assert client.post("/predict?image_type=selfie", files=files).status_code == 400
+
+
+def test_photos_go_to_the_photo_model_when_it_is_served(two_versions, monkeypatch):
+    from app import main
+    from app.registry import ModelRegistry
+
+    monkeypatch.setattr(main, "registry", ModelRegistry(two_versions))
+    files = {"file": ("lesion.png", make_png(), "image/png")}
+
+    # Photo model not served (default "v3"): photos fall back to the default model.
+    fallback = client.post("/predict?image_type=photo", files=files).json()
+    assert fallback["model_version"] == "v2"
+    assert "dermoscopy images only" in fallback["reliability_note"]
+    assert client.get("/health").json()["photo_model"] == "v2"
+
+    monkeypatch.setattr(main, "PHOTO_MODEL", "v1")
+    monkeypatch.setitem(main.PHOTO_NOTES, "v1", "v1 photo note")
+    photo = client.post("/predict?image_type=photo", files=files).json()
+    assert photo["model_version"] == "v1" and photo["reliability_note"] == "v1 photo note"
+    assert client.post("/stress-test?image_type=photo", files=files).json()["model_version"] == "v1"
+    # Dermoscopy keeps the default, and an explicit choice always wins.
+    assert client.post("/predict", files=files).json()["model_version"] == "v2"
+    assert client.post("/predict?image_type=photo&model=v2", files=files).json()["model_version"] == "v2"
+    assert client.get("/health").json()["photo_model"] == "v1"

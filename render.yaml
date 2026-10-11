@@ -14,6 +14,6 @@ services:
       - key: CORS_ORIGINS
         sync: false
       # Model versions to serve, each a GitHub Release folder, default first:
-      # v2=https://github.com/<you>/DermaLens/releases/download/model-v2,v1=https://github.com/<you>/DermaLens/releases/download/model-v1
+      # v2=https://github.com/<you>/DermaLens/releases/download/model-v2,v3=https://github.com/<you>/DermaLens/releases/download/model-v3
       - key: MODEL_RELEASES
         sync: false

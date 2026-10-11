@@ -54,6 +54,11 @@ PINNED_SHA256: dict[str, dict[str, str]] = {
         CONFIG: "144798dd5b4aa0deeb97f8d06a1e9d993f4fdb54c106552f73084cc4bf4aef6e",  # pragma: allowlist secret (public file hash)
         EVALUATION: "b2fd11540791d9a1e7eefb72632f789b8fdc12698ff3ea5f031b696a42c30fe7",  # pragma: allowlist secret (public file hash)
     },
+    "v3": {
+        WEIGHTS: "e0cf8e628dd81a5780e0bc5338c56908de47beec2a877fbbab02d0782fe8ecb2",  # pragma: allowlist secret (public file hash)
+        CONFIG: "d3e1fdc213fda9d21b9375df25b28277ed5f6db33e3622b164a39983c03b5ce0",  # pragma: allowlist secret (public file hash)
+        EVALUATION: "eeebad27fb09f6a77421591a7585d4f2d972107a04895ed08086a890345108f7",  # pragma: allowlist secret (public file hash)
+    },
 }
 
 
