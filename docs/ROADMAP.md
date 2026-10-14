@@ -1,6 +1,19 @@
 # DermaLens roadmap
 
-DermaLens is a long-term research project. Each stage below is meant to produce a result you can measure and explain, including results that turn out worse than hoped.
+DermaLens is a four-year research project (2026–2030). Each stage below is meant to produce a result you can measure and explain, including results that turn out worse than hoped.
+
+## Four-year plan
+
+Each year ends with something finished and checkable: a released model, a measured result, or a written report.
+
+| Year | Theme | Finished by the end of the year |
+|---|---|---|
+| **1 (2026–27)** | Build it and test it honestly | Live site; v1 → v3; phone-photo test (done). **v4** with fewer false alarms and a sensitivity floor for every cancer type; confidence intervals on every number; a second outside test on dermoscopy from another hospital. |
+| **2 (2027–28)** | Make it trustworthy | An **"I don't know" answer**: the model declines non-skin images and low-confidence cases, with a measured trade-off between how often it answers and how accurate it is. A **photo-quality check** (blur, lighting, framing) before analysis. A test of whether the heatmap actually lands on the lesion, using expert lesion outlines. |
+| **3 (2028–29)** | Fairness and experts | **Skin-tone results** on datasets that cover darker skin, the gap reported and, if possible, reduced. **Feedback from dermatologists** on the wording, the failure cases and the second opinion, recorded with what changed. |
+| **4 (2029–30)** | Publish | A **research paper** (methods, every result with its uncertainty, limitations) submitted to a student journal or science fair; a frozen, reproducible release of code, models and splits. |
+
+Rules for every year: datasets only with a licence that allows it; any study with people goes through a mentor and an ethics review first; DermaLens stays a research tool, never a diagnosis.
 
 ## Done
 
