@@ -30,7 +30,7 @@ v3 (v2 fine-tuned on PAD-UFES-20 + dermoscopy replay) made phone photos usable: 
 
 - Keep **probabilities** and **decisions** separate. Calibrate probabilities by validation likelihood (temperature or vector scaling), then choose decision thresholds separately.
 - Protect **every malignant or pre-malignant class** (melanoma, basal cell carcinoma, actinic keratosis / intraepithelial carcinoma) with sensitivity floors, not just melanoma.
-- Report **bootstrap confidence intervals** for every test metric. Rare classes (dermatofibroma, vascular) have very few test images.
+- ~~Report **bootstrap confidence intervals** for every test metric.~~ Done 2026-10-17 (lesion/patient-grouped, with paired model comparisons; see `MODEL_CARD.md`). Rare classes (dermatofibroma, vascular) still have very few test images.
 - Be explicit that v3 was designed after seeing v2's test results. That makes stage 2 essential.
 
 ### 2. External validation (the most important credibility step) — first run done

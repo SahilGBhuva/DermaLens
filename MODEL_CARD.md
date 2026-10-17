@@ -206,6 +206,37 @@ Per class (sensitivity, v2 → v3): akiec 0.46 → 0.32, bcc 0.76 → 0.68, bkl 
 
 **How it is served.** The API sends **regular photos to v3** and **dermoscopy to v2** (`PHOTO_MODEL`, default `v3`); the second opinion compares the two. v1 is no longer served (memory on the free instance) but stays published as `model-v1`.
 
+## Uncertainty: every headline number with a 95% interval (2026-10-17)
+
+The frozen v1, v2 and v3 were scored again on the fixed test splits (`.github/workflows/evaluate-models.yml`, run 39050967706; nothing trained or tuned). Every point estimate reproduced the published one exactly, and the rebuilt PAD-UFES-20 split matched the published split image for image. Intervals are percentile bootstraps that resample **whole lesions** (HAM10000) or **whole patients** (PAD-UFES-20), because several images of one lesion are not independent evidence. Files: [`docs/results/rescored/`](docs/results/rescored/) (per-image probabilities included, so later analyses never re-score a test split).
+
+**Dermoscopy — HAM10000 test (1,494 images):**
+
+| | Balanced accuracy | Melanoma sensitivity | Calibration error |
+|---|---|---|---|
+| v1 | 0.741 (0.668–0.816) | 0.642 (0.542–0.727) | 0.052 (0.037–0.075) |
+| v2 | 0.733 (0.674–0.797) | 0.781 (0.696–0.857) | 0.315 (0.292–0.338) |
+| v3 | 0.662 (0.615–0.740) | 0.797 (0.720–0.861) | 0.111 (0.091–0.139) |
+
+**Paired differences** (same lesions resampled for both models, 2,000 resamples):
+
+| | Difference | 95% interval | Verdict |
+|---|---|---|---|
+| Melanoma sensitivity, v2 − v1 | +0.139 | +0.052 to +0.233 | real gain |
+| Balanced accuracy, v2 − v1 | −0.008 | −0.087 to +0.105 | no detectable difference |
+| Balanced accuracy, v3 − v2 | −0.071 | −0.124 to −0.027 | real loss |
+| Melanoma sensitivity, v3 − v2 | +0.016 | −0.046 to +0.078 | no detectable difference |
+
+**Smartphone photos — PAD-UFES-20 test patients (423 mapped images, 273 patients):**
+
+| | Balanced accuracy | Melanoma sensitivity (13 images) | Concerning flagged | Benign not flagged |
+|---|---|---|---|---|
+| v1 | 0.322 (0.272–0.381) | 0.077 (0.000–0.300) | 0.466 (0.409–0.523) | 0.871 (0.793–0.939) |
+| v2 | 0.363 (0.297–0.433) | 0.538 (0.286–0.778) | 0.463 (0.407–0.519) | 0.849 (0.765–0.925) |
+| v3 | 0.654 (0.601–0.706) | 0.846 (0.636–1.000) | 0.970 (0.949–0.986) | 0.656 (0.559–0.748) |
+
+**Reading these.** v2's extra melanoma catches are real; its overall score is indistinguishable from v1's. v3's dermoscopy loss is real but modest, and its phone-photo gain is large: the intervals do not overlap. With only 13 test melanomas on phone photos, v3's melanoma figure could be anywhere from about 64% to 100%.
+
 ## Not clinically ready
 
 DermaLens is a research and education project. Before any clinical use it would still need, at minimum: external validation on independent datasets and devices, review by dermatologists, prospective testing, evaluation across skin tones, privacy and security work, and regulatory review. None of these has been done.

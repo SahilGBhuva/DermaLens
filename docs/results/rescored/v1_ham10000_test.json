@@ -1,0 +1,222 @@
+{
+  "accuracy": 0.8005354752342704,
+  "balanced_accuracy": 0.7413963019922905,
+  "macro_f1": 0.6396677117630156,
+  "weighted_f1": 0.8121836150475599,
+  "expected_calibration_error": 0.05241113713627038,
+  "multiclass_brier_score": 0.294900228102186,
+  "confusion_matrix": [
+    [
+      39,
+      6,
+      8,
+      5,
+      3,
+      1,
+      1
+    ],
+    [
+      2,
+      56,
+      0,
+      3,
+      1,
+      5,
+      1
+    ],
+    [
+      21,
+      5,
+      103,
+      2,
+      13,
+      8,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      4,
+      1,
+      2,
+      0
+    ],
+    [
+      5,
+      7,
+      20,
+      5,
+      120,
+      28,
+      2
+    ],
+    [
+      6,
+      12,
+      20,
+      10,
+      88,
+      853,
+      7
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      21
+    ]
+  ],
+  "per_class_sensitivity_specificity": {
+    "akiec": {
+      "sensitivity": 0.6190476190476191,
+      "specificity": 0.976240391334731
+    },
+    "bcc": {
+      "sensitivity": 0.8235294117647058,
+      "specificity": 0.9789621318373072
+    },
+    "bkl": {
+      "sensitivity": 0.6776315789473685,
+      "specificity": 0.9642324888226528
+    },
+    "df": {
+      "sensitivity": 0.5714285714285714,
+      "specificity": 0.9831876260928043
+    },
+    "mel": {
+      "sensitivity": 0.6417112299465241,
+      "specificity": 0.9188982402448355
+    },
+    "nv": {
+      "sensitivity": 0.856425702811245,
+      "specificity": 0.9116465863453815
+    },
+    "vasc": {
+      "sensitivity": 1.0,
+      "specificity": 0.9925322471147319
+    }
+  },
+  "classification_report": {
+    "akiec": {
+      "precision": 0.5342465753424658,
+      "recall": 0.6190476190476191,
+      "f1-score": 0.5735294117647058,
+      "support": 63.0
+    },
+    "bcc": {
+      "precision": 0.6511627906976745,
+      "recall": 0.8235294117647058,
+      "f1-score": 0.7272727272727273,
+      "support": 68.0
+    },
+    "bkl": {
+      "precision": 0.6821192052980133,
+      "recall": 0.6776315789473685,
+      "f1-score": 0.6798679867986799,
+      "support": 152.0
+    },
+    "df": {
+      "precision": 0.13793103448275862,
+      "recall": 0.5714285714285714,
+      "f1-score": 0.2222222222222222,
+      "support": 7.0
+    },
+    "mel": {
+      "precision": 0.5309734513274337,
+      "recall": 0.6417112299465241,
+      "f1-score": 0.5811138014527845,
+      "support": 187.0
+    },
+    "nv": {
+      "precision": 0.9509476031215162,
+      "recall": 0.856425702811245,
+      "f1-score": 0.90121500264131,
+      "support": 996.0
+    },
+    "vasc": {
+      "precision": 0.65625,
+      "recall": 1.0,
+      "f1-score": 0.7924528301886793,
+      "support": 21.0
+    },
+    "accuracy": 0.8005354752342704,
+    "macro avg": {
+      "precision": 0.5919472371814088,
+      "recall": 0.7413963019922905,
+      "f1-score": 0.6396677117630156,
+      "support": 1494.0
+    },
+    "weighted avg": {
+      "precision": 0.831861672401576,
+      "recall": 0.8005354752342704,
+      "f1-score": 0.8121836150475599,
+      "support": 1494.0
+    }
+  },
+  "macro_ovr_roc_auc": 0.9436276525784404,
+  "confidence_intervals_95": {
+    "level": 0.95,
+    "resamples": 1000,
+    "unit": "group",
+    "accuracy": [
+      0.7759,
+      0.8253
+    ],
+    "balanced_accuracy": [
+      0.6681,
+      0.8158
+    ],
+    "expected_calibration_error": [
+      0.0374,
+      0.0755
+    ],
+    "sensitivity": {
+      "akiec": [
+        0.4643,
+        0.7679
+      ],
+      "bcc": [
+        0.7229,
+        0.9207
+      ],
+      "bkl": [
+        0.5806,
+        0.7796
+      ],
+      "df": [
+        0.1429,
+        1.0
+      ],
+      "mel": [
+        0.5424,
+        0.7269
+      ],
+      "nv": [
+        0.832,
+        0.881
+      ],
+      "vasc": [
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "settings": {
+    "weights_sha256": "548cce02f6fd1fe98b5be28030dd0b560f208f29890535c0bb0701c6df377866",
+    "tta": false,
+    "temperature": 1.0,
+    "logit_bias": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}
