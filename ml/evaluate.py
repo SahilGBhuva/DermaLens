@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 
@@ -25,6 +26,12 @@ def main():
     parser.add_argument("--config", default=None, help="model_config.json from ml/calibrate.py")
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--output", default="models/evaluation.json")
+    parser.add_argument(
+        "--predictions",
+        default=None,
+        help="also save every test image's calibrated probabilities here (CSV), so later analyses "
+        "never need to score the test split again",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -50,7 +57,17 @@ def main():
             all_y.extend(labels.numpy().tolist())
             all_probs.append(probs.cpu().numpy())
 
-    metrics = summarize_metrics(all_y, np.concatenate(all_probs, axis=0), CLASSES)
+    probabilities = np.concatenate(all_probs, axis=0)
+    frame = pd.read_csv(args.csv)  # the loader keeps CSV order (shuffle=False)
+    groups = frame["lesion_id"].to_numpy() if "lesion_id" in frame.columns else None
+    metrics = summarize_metrics(all_y, probabilities, CLASSES, groups=groups)
+    if args.predictions:
+        keep = [c for c in ("image_id", "img_id", "lesion_id", "patient_id", "label") if c in frame.columns]
+        out = frame[keep].copy()
+        for k, name in enumerate(CLASSES):
+            out[f"p_{name}"] = probabilities[:, k].round(6)
+        Path(args.predictions).parent.mkdir(parents=True, exist_ok=True)
+        out.to_csv(args.predictions, index=False)
     metrics["settings"] = {
         "weights_sha256": weights_hash,
         "tta": config["tta"],

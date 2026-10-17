@@ -37,8 +37,8 @@ jobs:
 
           base = "https://github.com/SahilGBhuva/DermaLens/releases/download"
           fetch_releases(Path("models"), [(v, f"{base}/model-{v}") for v in ("v1", "v2")])
-          for version, files in PINNED_SHA256.items():
-              for name in files:
+          for version in ("v1", "v2"):
+              for name in PINNED_SHA256[version]:
                   if not (Path("models") / version / name).exists():
                       raise SystemExit(f"models/{version}/{name} missing or failed its hash check")
           print("models verified")

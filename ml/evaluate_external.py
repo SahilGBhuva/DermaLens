@@ -28,7 +28,7 @@ import torch
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 
-from metrics import expected_calibration_error
+from metrics import expected_calibration_error, grouped_bootstrap
 from model import CLASSES, apply_calibration, build_model, eval_transform, load_config, pick_device, predict_proba, sha256
 
 # PAD-UFES-20 diagnostic code -> DermaLens class.
@@ -147,7 +147,24 @@ def summarize(frame: pd.DataFrame, probs: np.ndarray) -> dict:
             "accuracy": float((predicted[rows] == truth[rows]).mean()) if rows.any() else None,
         }
 
+    # 95% intervals, resampling whole patients when the metadata has them.
+    groups = frame["patient_id"].to_numpy() if "patient_id" in frame.columns else np.arange(len(frame))
+
+    def statistic(rows):
+        d, p, t, m = diagnostic[rows], predicted[rows], truth[rows], mapped[rows]
+        recalls = [float((p[d == code] == name).mean()) for code, name in PAD_TO_DERMALENS.items() if (d == code).any()]
+        concerning = np.isin(d, list(CONCERNING_TRUTH))
+        flags = np.isin(p, list(CONCERNING))
+        return {
+            "accuracy": float((p[m] == t[m]).mean()) if m.any() else None,
+            "balanced_accuracy": float(np.mean(recalls)) if len(recalls) == len(PAD_TO_DERMALENS) else None,
+            "melanoma_sensitivity": float((p[d == "MEL"] == "mel").mean()) if (d == "MEL").any() else None,
+            "concerning_sensitivity": float(flags[concerning].mean()) if concerning.any() else None,
+            "concerning_specificity": float((~flags[~concerning]).mean()) if (~concerning).any() else None,
+        }
+
     return {
+        "confidence_intervals_95": grouped_bootstrap(statistic, groups),
         "images_scored": int(mapped.sum()),
         "accuracy": float((predicted[mapped] == truth[mapped]).mean()),
         "balanced_accuracy": float(np.mean(recalls)),

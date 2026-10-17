@@ -1,0 +1,93 @@
+name: Re-score published models (with confidence intervals)
+
+# Scores the frozen, published models again on the fixed test splits and
+# keeps per-image probabilities, so every number can carry a 95% interval
+# (resampling whole lesions / patients). Nothing is trained or tuned here.
+#
+# - HAM10000 test split (lesion-level, identical to training): every version.
+# - PAD-UFES-20 test patients (split by patient, identical to v3's): every version.
+# - All of PAD-UFES-20: only versions that never trained on it (v1, v2).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - uses: ./.github/actions/fetch-data
+        with:
+          models: v1,v2,v3
+
+      - name: Rebuild the fixed splits and check they match the published ones
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/work"
+          python ml/prepare_ham10000.py --metadata "$RUNNER_TEMP/ham/metadata.csv" \
+            --images-dir "$RUNNER_TEMP/ham/images" --output-dir "$W/ham"
+          python ml/check_splits.py --train "$W/ham/train.csv" --val "$W/ham/val.csv" --test "$W/ham/test.csv"
+          python ml/prepare_pad_ufes_20.py --metadata "$RUNNER_TEMP/pad/metadata.csv" \
+            --images-dir "$RUNNER_TEMP/pad/images" --output-dir "$W/pad"
+          python - <<'EOF'
+          import os, pandas as pd
+          w = os.environ["RUNNER_TEMP"] + "/work/pad"
+          for name in ("train", "val", "test"):
+              rebuilt = set(pd.read_csv(f"{w}/{name}.csv")["img_id"])
+              published = set(pd.read_csv(f"docs/results/pad_ufes_20_split/{name}.csv")["img_id"])
+              if rebuilt != published:
+                  raise SystemExit(f"PAD-UFES-20 {name} split differs from the published one")
+          print("PAD-UFES-20 splits match the published ones")
+          EOF
+
+      - name: Score every version
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/work"
+          mkdir -p results
+          for v in v1 v2 v3; do
+            python ml/evaluate.py --csv "$W/ham/test.csv" --weights "models/$v/dermalens_efficientnet_b0.pt" \
+              --config "models/$v/model_config.json" --output "results/${v}_ham10000_test.json" \
+              --predictions "results/${v}_ham10000_test_predictions.csv"
+          done
+          (cd ml && python evaluate_external.py --metadata "$W/pad/test.csv" --images-dir "$W/pad/images" \
+            --models ../models/v1,../models/v2,../models/v3 --output ../results/pad_ufes_20_test_patients.json)
+          (cd ml && python evaluate_external.py --metadata "$RUNNER_TEMP/pad/metadata.csv" \
+            --images-dir "$RUNNER_TEMP/pad/images" --models ../models/v1,../models/v2 \
+            --output ../results/pad_ufes_20_all_v1_v2.json)
+
+      - name: Summary
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          fmt = lambda v, ci: f"{v:.3f} ({ci[0]:.2f}–{ci[1]:.2f})" if ci else f"{v:.3f}"
+          print("## Re-scored with 95% intervals\n\n### HAM10000 test (dermoscopy)\n")
+          print("| Model | Balanced accuracy | Melanoma sensitivity | ECE |\n|---|---|---|---|")
+          for v in ("v1", "v2", "v3"):
+              m = json.load(open(f"results/{v}_ham10000_test.json")); ci = m["confidence_intervals_95"]
+              mel = m["per_class_sensitivity_specificity"]["mel"]["sensitivity"]
+              print(f"| {v} | {fmt(m['balanced_accuracy'], ci['balanced_accuracy'])} | "
+                    f"{fmt(mel, ci['sensitivity']['mel'])} | {fmt(m['expected_calibration_error'], ci['expected_calibration_error'])} |")
+          print("\n### PAD-UFES-20 test patients (smartphone)\n")
+          print("| Model | Balanced accuracy | Melanoma sensitivity | Concerning flagged |\n|---|---|---|---|")
+          for v, m in json.load(open("results/pad_ufes_20_test_patients.json"))["models"].items():
+              ci = m["confidence_intervals_95"]
+              print(f"| {v} | {fmt(m['balanced_accuracy'], ci.get('balanced_accuracy'))} | "
+                    f"{fmt(m['melanoma_sensitivity'], ci.get('melanoma_sensitivity'))} | "
+                    f"{fmt(m['concerning_lesions']['sensitivity'], ci.get('concerning_sensitivity'))} |")
+          EOF
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rescored-with-intervals
+          path: results/
+          retention-days: 90
