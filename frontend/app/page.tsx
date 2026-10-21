@@ -20,6 +20,9 @@ type Prediction = {
   image_type?: "dermoscopy" | "photo";
   reliability_note?: string | null;
   model_version?: string;
+  // v4+: a separate "needs a closer look" decision; null for models without one.
+  concern_score?: number | null;
+  needs_closer_look?: boolean | null;
 };
 
 type StressRow = {
@@ -313,6 +316,8 @@ export default function Home() {
       image_type: result.image_type ?? imageType,
       reliability_note: result.reliability_note ?? null,
       model_version: result.model_version ?? null,
+      concern_score: result.concern_score ?? null,
+      needs_closer_look: result.needs_closer_look ?? null,
       second_opinion: comparison
         ? {
             model_version: comparison.model_version,
@@ -1009,6 +1014,15 @@ export default function Home() {
                     </div>
                     <strong>{Math.round(result.confidence * 100)}%</strong>
                   </div>
+                  {typeof result.needs_closer_look === "boolean" && (
+                    <p className={result.needs_closer_look ? "concernFlag flagged" : "concernFlag"}>
+                      <b>{result.needs_closer_look ? "Needs a closer look" : "Not flagged"}</b>{" "}
+                      {Math.round((result.concern_score ?? 0) * 100)}% of the score is on
+                      cancer-type classes (melanoma, basal cell carcinoma, actinic keratosis),{" "}
+                      {result.needs_closer_look ? "at or above" : "below"} the level set to flag 9 in 10
+                      concerning spots in validation. Not a diagnosis.
+                    </p>
+                  )}
                   {result.reliability_note && <p className="photoNote">{result.reliability_note}</p>}
                   {result.image_type !== "photo" &&
                     typeof resultEvaluation?.expected_calibration_error === "number" &&

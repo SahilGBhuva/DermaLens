@@ -750,6 +750,21 @@ main {
 
 .photoNote + .calibrationNote { margin-top: 2px; }
 
+.concernFlag {
+  margin: -6px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f1f6f2;
+  border: 1px solid #cfe2d4;
+  color: #24452f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.concernFlag.flagged { background: #fdf3e7; border-color: #efcf9f; color: #5a3b0f; }
+.concernFlag b { font-weight: 700; }
+.concernFlag + .photoNote,
+.concernFlag + .calibrationNote { margin-top: 2px; }
+
 .wakeNote {
   max-width: 420px;
   margin: 14px auto 0;

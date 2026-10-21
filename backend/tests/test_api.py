@@ -182,3 +182,28 @@ def test_photos_go_to_the_photo_model_when_it_is_served(two_versions, monkeypatc
     assert client.post("/predict", files=files).json()["model_version"] == "v2"
     assert client.post("/predict?image_type=photo&model=v2", files=files).json()["model_version"] == "v2"
     assert client.get("/health").json()["photo_model"] == "v1"
+
+
+def test_concern_flag_is_returned_only_for_models_that_define_one(tmp_path, monkeypatch):
+    import json
+
+    from app import main
+    from app.registry import ModelRegistry
+    from conftest import make_version
+
+    make_version(tmp_path / "v1", seed=1)
+    make_version(tmp_path / "v4", seed=4)
+    config_path = tmp_path / "v4" / "model_config.json"
+    config = json.loads(config_path.read_text())
+    config["concern"] = {"classes": ["akiec", "bcc", "mel"], "threshold": 0.0, "target_sensitivity": 0.9}
+    config_path.write_text(json.dumps(config))
+    monkeypatch.setattr(main, "registry", ModelRegistry(tmp_path, default="v4"))
+    files = {"file": ("lesion.png", make_png(), "image/png")}
+
+    flagged = client.post("/predict?model=v4", files=files).json()
+    concern = sum(flagged["probabilities"][c] for c in ("akiec", "bcc", "mel"))
+    assert flagged["needs_closer_look"] is True  # threshold 0: always flagged
+    assert abs(flagged["concern_score"] - concern) < 1e-6
+
+    plain = client.post("/predict?model=v1", files=files).json()
+    assert plain["needs_closer_look"] is None and plain["concern_score"] is None

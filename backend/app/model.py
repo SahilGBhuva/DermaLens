@@ -59,6 +59,9 @@ class Prediction:
     entropy: float
     demo_mode: bool
     heatmap_data_url: Optional[str]
+    # v4+: a separate "needs a closer look" decision (None when the model has none).
+    concern_score: Optional[float] = None
+    needs_closer_look: Optional[bool] = None
 
 
 class DermaLensModel:
@@ -125,8 +128,16 @@ class DermaLensModel:
             (-(p * torch.log(p + 1e-12)).sum() / math.log(len(CLASSES))).item()
         )
 
+        concern_score = needs_closer_look = None
+        concern = self.config.get("concern")
+        if concern:
+            concern_score = float(sum(p[CLASSES.index(name)].item() for name in concern["classes"]))
+            needs_closer_look = concern_score >= float(concern["threshold"])
+
         return {
             "x": x,
+            "concern_score": concern_score,
+            "needs_closer_look": needs_closer_look,
             "probabilities": {CLASSES[i]: float(p[i].item()) for i in range(len(CLASSES))},
             "top_class": CLASSES[top_idx],
             "top_idx": top_idx,
@@ -153,6 +164,7 @@ class DermaLensModel:
             "tta": bool(self.config["tta"]),
             "calibrated": self.config["temperature"] != 1.0 or any(self.config["logit_bias"]),
             "min_mel_sensitivity_target": self.config.get("min_mel_sensitivity_target"),
+            "concern": self.config.get("concern"),
         }
 
     def predict(self, image: Image.Image, explain: bool = True) -> Prediction:
@@ -179,6 +191,8 @@ class DermaLensModel:
                 entropy=summary["entropy"],
                 demo_mode=False,
                 heatmap_data_url=None,
+                concern_score=summary["concern_score"],
+                needs_closer_look=summary["needs_closer_look"],
             )
 
         target_layer = self.model.features[-1]
@@ -201,6 +215,8 @@ class DermaLensModel:
             entropy=summary["entropy"],
             demo_mode=False,
             heatmap_data_url=heatmap_data_url,
+            concern_score=summary["concern_score"],
+            needs_closer_look=summary["needs_closer_look"],
         )
 
     def stress_test(self, image: Image.Image):

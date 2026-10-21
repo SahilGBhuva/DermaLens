@@ -11,6 +11,15 @@
       "port": 3210
     },
     {
+      "name": "frontend-3220",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd frontend && NEXT_PUBLIC_API_URL=http://127.0.0.1:8765 npm run dev -- -p 3220"
+      ],
+      "port": 3220
+    },
+    {
       "name": "backend",
       "runtimeExecutable": "sh",
       "runtimeArgs": [

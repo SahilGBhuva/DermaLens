@@ -311,6 +311,8 @@ async def predict(
         "probabilities": result.probabilities,
         "demo_mode": result.demo_mode,
         "heatmap_data_url": result.heatmap_data_url,
+        "concern_score": result.concern_score,
+        "needs_closer_look": result.needs_closer_look,
         "disclaimer": (
             "DermaLens is an educational research tool and is not a diagnosis or medical device. "
             "A clinician should evaluate any concerning lesion."
