@@ -91,6 +91,9 @@ def main():
     calibrated = {name: (y, apply_calibration(p, temperature, zeros).numpy()) for name, (y, p) in raw.items()}
     domains = {name: (concern_scores(p), np.isin(y, CONCERN_INDEX)) for name, (y, p) in calibrated.items()}
     threshold = choose_threshold(domains, args.target_sensitivity)
+    # v4.1: also one threshold per domain (validation file name, e.g. "dermoscopy",
+    # "phone"); the API uses the one for the photo type the visitor chose.
+    per_domain = {name: choose_threshold({name: d}, args.target_sensitivity) for name, d in domains.items()}
 
     validation = {}
     for name, (y, p) in calibrated.items():
@@ -98,6 +101,7 @@ def main():
             "balanced_accuracy": float(balanced_accuracy_score(y, p.argmax(1))),
             "expected_calibration_error": expected_calibration_error(y, p),
             "concern_flag": flag_stats(*domains[name], threshold),
+            "concern_flag_own_threshold": flag_stats(*domains[name], per_domain[name]),
         }
 
     config.update(
@@ -108,6 +112,7 @@ def main():
             "concern": {
                 "classes": CONCERN_CLASSES,
                 "threshold": round(threshold, 6),
+                "thresholds": {name: round(t, 6) for name, t in per_domain.items()},
                 "target_sensitivity": args.target_sensitivity,
             },
             "weights_sha256": sha256(args.weights),

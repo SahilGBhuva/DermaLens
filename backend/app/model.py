@@ -146,7 +146,9 @@ class DermaLensModel:
         concern = self.config.get("concern")
         if concern:
             concern_score = float(sum(p[CLASSES.index(name)].item() for name in concern["classes"]))
-            needs_closer_look = concern_score >= float(concern["threshold"])
+            # v4.1+: one threshold per photo type; otherwise the shared one.
+            threshold = concern.get("thresholds", {}).get(domain or "", concern["threshold"])
+            needs_closer_look = concern_score >= float(threshold)
 
         return {
             "x": x,

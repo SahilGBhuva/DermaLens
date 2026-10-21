@@ -32,6 +32,8 @@ def main():
         help="also save every test image's calibrated probabilities here (CSV), so later analyses "
         "never need to score the test split again",
     )
+    parser.add_argument("--decision-domain", default="dermoscopy",
+                        help="which per-domain flag threshold applies (v4.1+); falls back to the shared one")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -65,10 +67,11 @@ def main():
     if concern:  # v4+: the separate "needs a closer look" decision
         y = np.asarray(all_y)
         index = [CLASSES.index(name) for name in concern["classes"]]
-        flags = probabilities[:, index].sum(axis=1) >= concern["threshold"]
+        threshold = concern.get("thresholds", {}).get(args.decision_domain, concern["threshold"])
+        flags = probabilities[:, index].sum(axis=1) >= threshold
         truth = np.isin(y, index)
         metrics["concern_flag"] = {
-            "rule": f"P({' + '.join(concern['classes'])}) >= {concern['threshold']}",
+            "rule": f"P({' + '.join(concern['classes'])}) >= {threshold}",
             "sensitivity": float(flags[truth].mean()) if truth.any() else None,
             "specificity": float((~flags[~truth]).mean()) if (~truth).any() else None,
             "confidence_intervals_95": grouped_bootstrap(

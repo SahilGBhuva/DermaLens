@@ -1,0 +1,130 @@
+name: v4.1 (v4 weights, one flag threshold per photo type)
+
+# Pre-registered in docs/ROADMAP.md ("v4.1 pre-registration"): v4's weights
+# and temperature with one "needs a closer look" threshold per photo type,
+# fitted on validation (ml/fit_decisions.py). No retraining. Scores each test
+# once (HAM10000, PAD-UFES-20 test patients, BCN20000) and runs the paired
+# comparisons with v2. v4's weights come from the training run's artifact and
+# must match the weights_sha256 committed in docs/results/v4/model_config.json.
+on:
+  workflow_dispatch:
+    inputs:
+      v4_run:
+        description: "Run id of the v4 training run (artifact dermalens-v4)"
+        default: "39656257825"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  v41:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - uses: ./.github/actions/fetch-data
+        with:
+          models: v2,v3
+
+      - name: Get v4's weights and check them
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.v4_run }}
+        run: |
+          set -euo pipefail
+          gh run download "$RUN_ID" -n dermalens-v4 -D "$RUNNER_TEMP/v4"
+          expected=$(python -c "import json; print(json.load(open('docs/results/v4/model_config.json'))['weights_sha256'])")
+          echo "$expected  $RUNNER_TEMP/v4/dermalens_efficientnet_b0.pt" | sha256sum -c -
+          mkdir -p models/v4.1
+          cp "$RUNNER_TEMP/v4/dermalens_efficientnet_b0.pt" models/v4.1/
+          python - <<'EOF'
+          import json
+          config = json.load(open("docs/results/v4/model_config.json"))
+          config["version"] = "v4.1"
+          config["recipe"] = config["recipe"] + "; v4.1: one flag threshold per photo type"
+          json.dump(config, open("models/v4.1/model_config.json", "w"), indent=2)
+          EOF
+
+      - name: Rebuild the fixed splits
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/work"
+          python ml/prepare_ham10000.py --metadata "$RUNNER_TEMP/ham/metadata.csv" \
+            --images-dir "$RUNNER_TEMP/ham/images" --output-dir "$W/ham"
+          python ml/prepare_pad_ufes_20.py --metadata "$RUNNER_TEMP/pad/metadata.csv" \
+            --images-dir "$RUNNER_TEMP/pad/images" --output-dir "$W/pad"
+          mkdir -p "$W/val"
+          cp "$W/ham/val.csv" "$W/val/dermoscopy.csv"
+          python -c "import pandas as pd, sys; pd.read_csv(sys.argv[1])[['image_path','label']].to_csv(sys.argv[2], index=False)" \
+            "$W/pad/val.csv" "$W/val/phone.csv"
+
+      - name: Fit the per-photo-type thresholds (validation only)
+        run: |
+          python ml/fit_decisions.py --weights models/v4.1/dermalens_efficientnet_b0.pt \
+            --val-csv "$RUNNER_TEMP/work/val/dermoscopy.csv" "$RUNNER_TEMP/work/val/phone.csv" \
+            --config models/v4.1/model_config.json
+
+      - name: Score each test once
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/work"
+          O=results
+          mkdir -p "$O"
+          python ml/evaluate.py --csv "$W/ham/test.csv" --weights models/v4.1/dermalens_efficientnet_b0.pt \
+            --config models/v4.1/model_config.json --output "$O/v4.1_ham10000_test.json" \
+            --predictions "$O/v4.1_ham10000_test_predictions.csv"
+          (cd ml && python evaluate_external.py --metadata "$W/pad/test.csv" --images-dir "$W/pad/images" \
+            --models ../models/v2,../models/v3,../models/v4.1 --output "../$O/pad_ufes_20_test_patients.json" \
+            --predictions "../$O/pad_ufes_20_test_patients_predictions.csv")
+          python ml/prepare_bcn20000.py --output-dir "$RUNNER_TEMP/bcn"
+          (cd ml && python evaluate_external.py --dataset bcn20000 --metadata "$RUNNER_TEMP/bcn/metadata.csv" \
+            --images-dir "$RUNNER_TEMP/bcn/images" --models ../models/v2,../models/v3,../models/v4.1 \
+            --output "../$O/bcn20000.json" --predictions "../$O/bcn20000_predictions.csv")
+          cp models/v4.1/model_config.json "$O/v4.1_model_config.json"
+
+      - name: Paired comparisons with v2
+        run: |
+          set -euo pipefail
+          cd ml
+          python compare_models.py --a ../docs/results/rescored/v2_ham10000_test_predictions.csv \
+            --b ../results/v4.1_ham10000_test_predictions.csv --output ../results/paired_ham10000_v4.1_vs_v2.json
+          python compare_models.py --a ../results/bcn20000_predictions.csv --a-prefix v2_ \
+            --b ../results/bcn20000_predictions.csv --b-prefix v4.1_ --key img_id --truth diagnostic \
+            --dataset bcn20000 --output ../results/paired_bcn20000_v4.1_vs_v2.json
+          python compare_models.py --a ../results/pad_ufes_20_test_patients_predictions.csv --a-prefix v3_ \
+            --b ../results/pad_ufes_20_test_patients_predictions.csv --b-prefix v4.1_ --key img_id --truth diagnostic \
+            --dataset pad_ufes_20 --group patient_id --output ../results/paired_pad_v4.1_vs_v3.json
+
+      - name: Summary
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          ham = json.load(open("results/v4.1_ham10000_test.json")); cf = ham["concern_flag"]
+          print("## v4.1 (pre-registered)\n")
+          print(f"**HAM10000:** balanced accuracy {ham['balanced_accuracy']:.3f}; flag catches {cf['sensitivity']:.3f}, leaves {cf['specificity']:.3f} of benign unflagged\n")
+          for name in ("pad_ufes_20_test_patients", "bcn20000"):
+              d = json.load(open(f"results/{name}.json"))
+              print(f"**{name}:**\n\n| Model | Balanced accuracy | Flag catches | Benign unflagged |\n|---|---|---|---|")
+              for v, m in d["models"].items():
+                  c = m["concerning_lesions"]
+                  print(f"| {v} | {m['balanced_accuracy']:.3f} | {c['sensitivity']:.3f} | {c['specificity']:.3f} |")
+              print()
+          for name in ("paired_ham10000_v4.1_vs_v2", "paired_bcn20000_v4.1_vs_v2", "paired_pad_v4.1_vs_v3"):
+              d = json.load(open(f"results/{name}.json")); b = d["balanced_accuracy"]
+              print(f"**{name}:** balanced accuracy difference {b['difference_b_minus_a']:+.3f} {b['interval_95']} ({b['verdict']})\n")
+          EOF
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dermalens-v4.1
+          path: |
+            results/
+            models/v4.1/model_config.json
+          retention-days: 90

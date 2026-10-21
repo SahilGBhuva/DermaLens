@@ -207,3 +207,24 @@ def test_concern_flag_is_returned_only_for_models_that_define_one(tmp_path, monk
 
     plain = client.post("/predict?model=v1", files=files).json()
     assert plain["needs_closer_look"] is None and plain["concern_score"] is None
+
+
+def test_concern_flag_uses_the_threshold_for_the_photo_type(tmp_path, monkeypatch):
+    import json
+
+    from app import main
+    from app.registry import ModelRegistry
+    from conftest import make_version
+
+    make_version(tmp_path / "v4", seed=4)
+    config_path = tmp_path / "v4" / "model_config.json"
+    config = json.loads(config_path.read_text())
+    # Dermoscopy: threshold 0 (always flagged). Phone: above any possible score (never flagged).
+    config["concern"] = {"classes": ["akiec", "bcc", "mel"], "threshold": 0.0,
+                         "thresholds": {"dermoscopy": 0.0, "phone": 1.01}, "target_sensitivity": 0.9}
+    config_path.write_text(json.dumps(config))
+    monkeypatch.setattr(main, "registry", ModelRegistry(tmp_path, default="v4"))
+    monkeypatch.setattr(main, "PHOTO_MODEL", "v4")
+    files = {"file": ("lesion.png", make_png(), "image/png")}
+    assert client.post("/predict?model=v4", files=files).json()["needs_closer_look"] is True
+    assert client.post("/predict?model=v4&image_type=photo", files=files).json()["needs_closer_look"] is False

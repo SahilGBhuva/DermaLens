@@ -41,3 +41,13 @@ def test_external_summary_uses_the_models_own_decision_rule():
     assert old_rule["sensitivity"] == 0.0  # top-class rule misses it
     assert new_rule["sensitivity"] == 1.0 and new_rule["specificity"] == 1.0
     assert new_rule["decision_rule"].startswith("P(akiec + bcc + mel) >= 0.3")
+
+
+def test_external_summary_uses_the_datasets_own_domain_threshold():
+    frame = pd.DataFrame({"diagnostic": ["NEV"], "patient_id": ["P1"]})
+    probs = np.zeros((1, len(CLASSES)))
+    probs[0, CLASSES.index("nv")], probs[0, CLASSES.index("mel")] = 0.8, 0.2
+    concern = {"classes": ["akiec", "bcc", "mel"], "threshold": 0.1, "thresholds": {"phone": 0.3, "dermoscopy": 0.1}}
+    # PAD-UFES-20 is phone photos: threshold 0.3, so this benign mole is not flagged.
+    assert summarize(frame, probs, concern)["concerning_lesions"]["specificity"] == 1.0
+    assert summarize(frame, probs, {**concern, "thresholds": {}})["concerning_lesions"]["specificity"] == 0.0

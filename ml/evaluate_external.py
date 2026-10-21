@@ -61,6 +61,7 @@ DATASETS = {
         "mapping": PAD_TO_DERMALENS,
         "unmapped": UNMAPPED,
         "concerning": CONCERNING_TRUTH,
+        "decision_domain": "phone",
     },
     "bcn20000": {
         "name": "BCN20000 (Hospital Clinic Barcelona, via the ISIC Archive)",
@@ -72,6 +73,7 @@ DATASETS = {
         },
         "unmapped": "SCC",
         "concerning": {"AK", "BCC", "MEL", "SCC"},
+        "decision_domain": "dermoscopy",
     },
 }
 
@@ -133,7 +135,12 @@ def run_model(model_dir: Path, frame: pd.DataFrame, images_dir: Path, batch_size
     return probs, config
 
 
-def concern_flags(probs: np.ndarray, predicted: np.ndarray, concern: dict | None) -> np.ndarray:
+def concern_threshold(concern: dict, domain: str | None) -> float:
+    """The per-domain threshold (v4.1+) if the config has one, else the shared one."""
+    return concern.get("thresholds", {}).get(domain or "", concern["threshold"])
+
+
+def concern_flags(probs: np.ndarray, predicted: np.ndarray, concern: dict | None, domain: str | None = None) -> np.ndarray:
     """The model's own "needs a closer look" decision for each row.
 
     v4+ configs carry a `concern` threshold on P(akiec) + P(bcc) + P(mel);
@@ -141,7 +148,7 @@ def concern_flags(probs: np.ndarray, predicted: np.ndarray, concern: dict | None
     """
     if concern:
         index = [CLASSES.index(name) for name in concern["classes"]]
-        return probs[:, index].sum(axis=1) >= concern["threshold"]
+        return probs[:, index].sum(axis=1) >= concern_threshold(concern, domain)
     return np.isin(predicted, list(CONCERNING))
 
 
@@ -167,7 +174,7 @@ def summarize(frame: pd.DataFrame, probs: np.ndarray, concern: dict | None = Non
     class_index = {name: i for i, name in enumerate(CLASSES)}
     ece = expected_calibration_error([class_index[t] for t in truth[mapped]], probs[mapped])
 
-    flagged = concern_flags(probs, predicted, concern)
+    flagged = concern_flags(probs, predicted, concern, spec.get("decision_domain"))
     should_flag = np.isin(diagnostic, list(concerning_truth))
     scc = diagnostic == unmapped
 
@@ -221,7 +228,7 @@ def summarize(frame: pd.DataFrame, probs: np.ndarray, concern: dict | None = Non
         "concerning_lesions": {
             "description": "Flagged for a closer look when the truth is ACK, BCC, MEL or SCC",
             "decision_rule": (
-                f"P({' + '.join(concern['classes'])}) >= {concern['threshold']}" if concern
+                f"P({' + '.join(concern['classes'])}) >= {concern_threshold(concern, spec.get('decision_domain'))}" if concern
                 else "top class is akiec, bcc or mel"
             ),
             "sensitivity": float(flagged[should_flag].mean()) if should_flag.any() else None,
