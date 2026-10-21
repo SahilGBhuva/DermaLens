@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -94,14 +95,14 @@ def main():
     parser.add_argument("--max-train", type=int, default=6000, help="class-stratified sample of training images")
     parser.add_argument("--accept-rate", type=float, default=0.95)
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--work-dir", default="/tmp/dermalens-scope")
+    parser.add_argument("--work-dir", default=None, help="scratch folder (default: a new private temp dir)")
     args = parser.parse_args()
 
     config = load_config(args.config)
     device = pick_device()
     model = build_model(pretrained=False).to(device)
     model.load_state_dict(torch.load(args.weights, map_location=device, weights_only=True))
-    work = Path(args.work_dir)
+    work = Path(args.work_dir) if args.work_dir else Path(tempfile.mkdtemp(prefix="dermalens-scope-"))
     work.mkdir(parents=True, exist_ok=True)
 
     train = pd.concat([pd.read_csv(p)[["image_path", "label"]] for p in args.train_csv], ignore_index=True)
