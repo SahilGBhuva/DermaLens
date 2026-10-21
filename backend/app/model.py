@@ -14,6 +14,7 @@ from PIL import Image, ImageEnhance, ImageFilter
 from torchvision import models, transforms
 
 from .gradcam import GradCAM, overlay_heatmap
+from .scope import ScopeCheck
 
 CLASSES = ["akiec", "bcc", "bkl", "df", "mel", "nv", "vasc"]
 MODELS_DIR = Path(__file__).resolve().parents[2] / "models"
@@ -62,6 +63,9 @@ class Prediction:
     # v4+: a separate "needs a closer look" decision (None when the model has none).
     concern_score: Optional[float] = None
     needs_closer_look: Optional[bool] = None
+    # Out-of-scope check (None when the model has no fitted statistics).
+    scope_score: Optional[float] = None
+    in_scope: Optional[bool] = None
 
 
 class DermaLensModel:
@@ -77,6 +81,7 @@ class DermaLensModel:
             ]
         )
         self.model = self._build_model()
+        self.scope: ScopeCheck | None = None
         self.demo_mode = True
         self.status = "no trained weights found"
 
@@ -99,6 +104,7 @@ class DermaLensModel:
             self.demo_mode = False
             self.status = "loaded"
             self.weights_sha256 = actual
+            self.scope = ScopeCheck.load(model_path.parent, self.config.get("scope"))
 
     @staticmethod
     def _pick_device() -> torch.device:
@@ -119,7 +125,13 @@ class DermaLensModel:
     def _predict_summary(self, image: Image.Image):
         x = self.transform(image.convert("RGB")).unsqueeze(0).to(self.device)
         with torch.inference_mode():
-            p = self._probabilities(x)[0]
+            p, features = self._probabilities(x)
+            p = p[0]
+
+        scope_score = in_scope = None
+        if self.scope is not None:
+            scope_score = self.scope.score(features[0].cpu().numpy())
+            in_scope = self.scope.in_scope(scope_score)
 
         top_idx = int(torch.argmax(p).item())
         confidence = float(p[top_idx].item())
@@ -138,6 +150,8 @@ class DermaLensModel:
             "x": x,
             "concern_score": concern_score,
             "needs_closer_look": needs_closer_look,
+            "scope_score": scope_score,
+            "in_scope": in_scope,
             "probabilities": {CLASSES[i]: float(p[i].item()) for i in range(len(CLASSES))},
             "top_class": CLASSES[top_idx],
             "top_idx": top_idx,
@@ -146,15 +160,22 @@ class DermaLensModel:
             "entropy": entropy,
         }
 
-    def _probabilities(self, x: torch.Tensor) -> torch.Tensor:
-        """Apply the same settings ml/evaluate.py used for the published scores."""
+    def _probabilities(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Apply the same settings ml/evaluate.py used for the published scores.
+
+        Also returns the pooled features of the unflipped view (what the
+        out-of-scope check measures); the forward pass is the model's own
+        features -> avgpool -> flatten -> classifier, split in two.
+        """
+        features = torch.flatten(self.model.avgpool(self.model.features(x)), 1)
+        first = torch.softmax(self.model.classifier(features), dim=1)
         if self.config["tta"]:
-            views = [x, x.flip(-1), x.flip(-2), x.flip(-1).flip(-2)]
-            p = torch.stack([torch.softmax(self.model(v), dim=1) for v in views]).mean(0)
+            flips = [x.flip(-1), x.flip(-2), x.flip(-1).flip(-2)]
+            p = torch.stack([first] + [torch.softmax(self.model(v), dim=1) for v in flips]).mean(0)
         else:
-            p = torch.softmax(self.model(x), dim=1)
+            p = first
         bias = torch.as_tensor(self.config["logit_bias"], dtype=p.dtype, device=p.device)
-        return torch.softmax(torch.log(p.clamp_min(1e-12)) / self.config["temperature"] + bias, dim=1)
+        return torch.softmax(torch.log(p.clamp_min(1e-12)) / self.config["temperature"] + bias, dim=1), features
 
     def info(self) -> dict:
         return {
@@ -165,6 +186,7 @@ class DermaLensModel:
             "calibrated": self.config["temperature"] != 1.0 or any(self.config["logit_bias"]),
             "min_mel_sensitivity_target": self.config.get("min_mel_sensitivity_target"),
             "concern": self.config.get("concern"),
+            "scope_check": self.scope is not None,
         }
 
     def predict(self, image: Image.Image, explain: bool = True) -> Prediction:
@@ -193,6 +215,8 @@ class DermaLensModel:
                 heatmap_data_url=None,
                 concern_score=summary["concern_score"],
                 needs_closer_look=summary["needs_closer_look"],
+                scope_score=summary["scope_score"],
+                in_scope=summary["in_scope"],
             )
 
         target_layer = self.model.features[-1]
@@ -217,6 +241,8 @@ class DermaLensModel:
             heatmap_data_url=heatmap_data_url,
             concern_score=summary["concern_score"],
             needs_closer_look=summary["needs_closer_look"],
+            scope_score=summary["scope_score"],
+            in_scope=summary["in_scope"],
         )
 
     def stress_test(self, image: Image.Image):

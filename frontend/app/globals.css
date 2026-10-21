@@ -764,6 +764,20 @@ main {
 
 .photoNote + .calibrationNote { margin-top: 2px; }
 
+.scopeWarning {
+  margin: -6px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fdecec;
+  border: 1px solid #f0bcbc;
+  color: #6b1f1f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.scopeWarning + .concernFlag,
+.scopeWarning + .photoNote,
+.scopeWarning + .calibrationNote { margin-top: 2px; }
+
 .concernFlag {
   margin: -6px 0 0;
   padding: 10px 12px;

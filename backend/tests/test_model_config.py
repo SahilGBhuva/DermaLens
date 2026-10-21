@@ -57,7 +57,7 @@ def test_default_settings_are_plain_softmax(tmp_path, weights):
     x = torch.randn(1, 3, 224, 224, device=model.device)
     with torch.inference_mode():
         expected = torch.softmax(model.model(x), dim=1)
-        actual = model._probabilities(x)
+        actual, _ = model._probabilities(x)
     torch.testing.assert_close(actual, expected, atol=1e-5, rtol=1e-4)
 
 
@@ -70,7 +70,7 @@ def test_logit_bias_shifts_toward_melanoma(tmp_path, weights):
     x = torch.randn(1, 3, 224, 224, device=plain.device)
     with torch.inference_mode():
         mel = CLASSES.index("mel")
-        assert biased._probabilities(x)[0, mel] > plain._probabilities(x)[0, mel]
+        assert biased._probabilities(x)[0][0, mel] > plain._probabilities(x)[0][0, mel]
 
 
 def test_preprocessing_matches_training_pipeline(tmp_path, weights):

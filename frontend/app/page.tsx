@@ -25,6 +25,9 @@ type Prediction = {
   // v4+: a separate "needs a closer look" decision; null for models without one.
   concern_score?: number | null;
   needs_closer_look?: boolean | null;
+  // Out-of-scope check: false when the image does not look like a skin photo.
+  in_scope?: boolean | null;
+  scope_score?: number | null;
 };
 
 type StressRow = {
@@ -331,6 +334,8 @@ export default function Home() {
       reliability_note: result.reliability_note ?? null,
       model_version: result.model_version ?? null,
       photo_check: quality,
+      in_scope: result.in_scope ?? null,
+      scope_score: result.scope_score ?? null,
       concern_score: result.concern_score ?? null,
       needs_closer_look: result.needs_closer_look ?? null,
       second_opinion: comparison
@@ -1041,6 +1046,13 @@ export default function Home() {
                     </div>
                     <strong>{Math.round(result.confidence * 100)}%</strong>
                   </div>
+                  {result.in_scope === false && (
+                    <p className="scopeWarning" role="alert">
+                      <b>This doesn&apos;t look like a skin close-up.</b> Its image features are far from
+                      every skin photo the model learned from, so the scores below are probably
+                      meaningless. DermaLens only analyses close-ups of a single skin spot.
+                    </p>
+                  )}
                   {typeof result.needs_closer_look === "boolean" && (
                     <p className={result.needs_closer_look ? "concernFlag flagged" : "concernFlag"}>
                       <b>{result.needs_closer_look ? "Needs a closer look" : "Not flagged"}</b>{" "}

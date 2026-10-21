@@ -37,6 +37,7 @@ WEIGHTS = "dermalens_efficientnet_b0.pt"
 CONFIG = "model_config.json"
 EVALUATION = "evaluation.json"
 HISTORY = "training_history.json"
+SCOPE_STATS = "scope_stats.npz"
 VERSION_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
 
 # SHA-256 of each published release file, pinned in reviewed code. The weights
@@ -132,6 +133,11 @@ def fetch_releases(models_dir: Path, releases: list[tuple[str, str]]) -> None:
             download(f"{base}/{HISTORY}", folder / HISTORY)  # optional
         except Exception as exc:  # noqa: BLE001 - history only feeds a chart
             log.warning("No training history for %s: %s", version, exc)
+        try:
+            # Optional; model.py checks its sha256 against the (pinned) config.
+            download(f"{base}/{SCOPE_STATS}", folder / SCOPE_STATS)
+        except Exception as exc:  # noqa: BLE001 - the check is simply off without it
+            log.info("No out-of-scope statistics for %s: %s", version, exc)
 
 
 class ModelRegistry:
