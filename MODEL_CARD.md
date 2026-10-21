@@ -237,6 +237,48 @@ The frozen v1, v2 and v3 were scored again on the fixed test splits (`.github/wo
 
 **Reading these.** v2's extra melanoma catches are real; its overall score is indistinguishable from v1's. v3's dermoscopy loss is real but modest, and its phone-photo gain is large: the intervals do not overlap. With only 13 test melanomas on phone photos, v3's melanoma figure could be anywhere from about 64% to 100%.
 
+## Outside dermoscopy test: BCN20000, Hospital Clinic Barcelona (2026-10-21)
+
+The published v1, v2 and v3 were scored **unchanged** on BCN20000 (ISIC Archive collection 249, CC BY-NC): dermoscopy from a different hospital and country than HAM10000, 76% confirmed by histopathology, never used for training. Of 18,946 images, 16,843 (4,752 lesions) map onto DermaLens classes; 1,156 without a diagnosis, 633 melanoma metastases and 314 scars were left out. Intervals resample whole lesions (no patient ids are published). Run: `.github/workflows/external-bcn.yml`, run 39658009522; files in [`docs/results/bcn20000/`](docs/results/bcn20000/), per-image probabilities included.
+
+| | v1 | v2 | v3 | for comparison: v2 on HAM10000 test |
+|---|---|---|---|---|
+| Balanced accuracy (7 classes) | 0.417 (0.39–0.45) | 0.486 (0.46–0.51) | 0.468 (0.44–0.50) | 0.733 |
+| Melanoma sensitivity (4,003 images) | 0.328 (0.30–0.36) | 0.498 (0.47–0.53) | 0.566 (0.54–0.60) | 0.781 |
+| Concerning lesions flagged | 0.471 | 0.447 | 0.573 | — |
+| Benign lesions not flagged | 0.871 | 0.835 | 0.665 | — |
+| Calibration error (ECE) | 0.222 | 0.150 | 0.182 | 0.315 |
+
+**What this shows.** Moving to another hospital's dermoscopy cuts balanced accuracy from about 0.73 to below 0.50 and melanoma sensitivity from 0.78 to 0.50 for v2. The HAM10000 numbers describe HAM10000-like images, not dermoscopy in general. Actinic keratoses (8–20% recognised) and basal cell carcinomas (32–44%) suffer most. This is the most important limitation found so far.
+
+## v4: pre-registered result (2026-10-21)
+
+v4 followed the pre-registration in `docs/ROADMAP.md` exactly: v2 fine-tuned for up to 15 epochs (epoch 8 chosen on validation) on PAD-UFES-20 train plus a 5,000-image HAM10000 replay; temperature-only probabilities (T = 0.9, no per-class offsets); a "needs a closer look" flag when P(akiec) + P(bcc) + P(mel) ≥ 0.148, the highest threshold keeping ≥ 90% concerning-lesion sensitivity on both validation domains. Run 39656257825; files in [`docs/results/v4/`](docs/results/v4/). Not published as a release and not served.
+
+| PAD-UFES-20 test patients (phone) | v3 | v4 | ablation: v3 weights + v4 decisions |
+|---|---|---|---|
+| Balanced accuracy | 0.654 (0.60–0.71) | **0.738** (0.68–0.79) | 0.706 (0.64–0.77) |
+| Nevus recognised | 0.11 | **0.51** | 0.42 |
+| Calibration error | 0.050 | **0.029** | 0.056 |
+| Flag: concerning caught | 0.970 | **1.000** | 0.995 |
+| Flag: benign not flagged | **0.656** | 0.430 (0.32–0.54) | 0.527 |
+
+| HAM10000 test (dermoscopy) | v2 | v4 |
+|---|---|---|
+| Balanced accuracy | 0.733 (0.67–0.80) | 0.695 (0.63–0.79) |
+| Accuracy | 0.785 | **0.828** |
+| Melanoma as top class | **0.781** | 0.642 |
+| Flag: concerning caught | — | 0.877 (0.83–0.92) |
+| Flag: benign not flagged | — | 0.812 (0.78–0.84) |
+| Calibration error | 0.315 | **0.037** |
+| ROC-AUC | 0.902 | **0.940** |
+
+**Verdict against the pre-registered criteria.**
+- *Phone photos:* criterion 1 met (flag catches 100%), **criterion 2 failed**: v4 leaves 43% of benign lesions unflagged against v3's 65.6%. **v3 stays** for regular photos.
+- *Dermoscopy:* the flag catches 87.7% (criterion met); the balanced-accuracy criterion needs a **paired** comparison with v2 that this run did not save per-image predictions for, so it is undecided. **v2 stays** until it is run.
+
+**Why it failed, and what is learned.** One flag threshold had to reach 90% sensitivity on dermoscopy validation, which on phone validation flagged 99.7% of concerning lesions but only 38% of benign ones were left alone. The ablation shows the two changes separately: the decision layer alone raised phone balanced accuracy (0.654 → 0.706) and fixed calibration on dermoscopy; longer training added more (→ 0.738). Removing per-class offsets also means the *top class* says "melanoma" less often (0.64 on dermoscopy), and the flag, not the top class, is now what catches concerning lesions. The next step (v4.1) is pre-registered in `docs/ROADMAP.md` before any v4.1 result.
+
 ## Not clinically ready
 
 DermaLens is a research and education project. Before any clinical use it would still need, at minimum: external validation on independent datasets and devices, review by dermatologists, prospective testing, evaluation across skin tones, privacy and security work, and regulatory review. None of these has been done.

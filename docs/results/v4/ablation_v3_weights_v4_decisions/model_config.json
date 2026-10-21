@@ -1,0 +1,71 @@
+{
+  "arch": "efficientnet_b0",
+  "classes": [
+    "akiec",
+    "bcc",
+    "bkl",
+    "df",
+    "mel",
+    "nv",
+    "vasc"
+  ],
+  "image_size": 224,
+  "mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "tta": true,
+  "temperature": 0.9,
+  "logit_bias": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "concern": {
+    "classes": [
+      "akiec",
+      "bcc",
+      "mel"
+    ],
+    "threshold": 0.169862,
+    "target_sensitivity": 0.9
+  },
+  "weights_sha256": "e0cf8e628dd81a5780e0bc5338c56908de47beec2a877fbbab02d0782fe8ecb2",
+  "validation": {
+    "images": 1960,
+    "nll_before": 0.5829078555107117,
+    "nll_after": 0.5752108693122864,
+    "domains": {
+      "dermoscopy": {
+        "balanced_accuracy": 0.7435941984356973,
+        "expected_calibration_error": 0.041935223960970644,
+        "concern_flag": {
+          "images": 1519,
+          "concerning": 278,
+          "sensitivity": 0.9028776978417267,
+          "specificity": 0.806607574536664
+        }
+      },
+      "phone": {
+        "balanced_accuracy": 0.6321641026871785,
+        "expected_calibration_error": 0.04432086487746294,
+        "concern_flag": {
+          "images": 441,
+          "concerning": 350,
+          "sensitivity": 0.9942857142857143,
+          "specificity": 0.45054945054945056
+        }
+      }
+    }
+  }
+}

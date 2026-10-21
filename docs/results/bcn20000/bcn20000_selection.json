@@ -1,0 +1,22 @@
+{
+  "listed": 18946,
+  "kept": 16843,
+  "kept_by_code": {
+    "NV": 5647,
+    "MEL": 4003,
+    "BCC": 3676,
+    "BKL": 1551,
+    "AK": 1088,
+    "SCC": 559,
+    "DF": 168,
+    "VASC": 151
+  },
+  "excluded_by_diagnosis_3": {
+    "(none)": 1156,
+    "Melanoma metastasis": 633,
+    "Scar": 314
+  },
+  "lesions": 4752,
+  "patients": 0,
+  "histopathology_share": 0.7591877931484889
+}

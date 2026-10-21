@@ -1,0 +1,237 @@
+{
+  "accuracy": 0.8340026773761714,
+  "balanced_accuracy": 0.68048565864731,
+  "macro_f1": 0.6614617112553326,
+  "weighted_f1": 0.8338364348488578,
+  "expected_calibration_error": 0.023405996391891337,
+  "multiclass_brier_score": 0.24598743110956603,
+  "confusion_matrix": [
+    [
+      28,
+      10,
+      13,
+      1,
+      10,
+      0,
+      1
+    ],
+    [
+      3,
+      47,
+      5,
+      3,
+      2,
+      8,
+      0
+    ],
+    [
+      11,
+      1,
+      102,
+      0,
+      23,
+      15,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      3,
+      1,
+      3,
+      0
+    ],
+    [
+      2,
+      4,
+      11,
+      5,
+      121,
+      44,
+      0
+    ],
+    [
+      2,
+      6,
+      11,
+      0,
+      48,
+      925,
+      4
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      20
+    ]
+  ],
+  "per_class_sensitivity_specificity": {
+    "akiec": {
+      "sensitivity": 0.4444444444444444,
+      "specificity": 0.9874213836477987
+    },
+    "bcc": {
+      "sensitivity": 0.6911764705882353,
+      "specificity": 0.985273492286115
+    },
+    "bkl": {
+      "sensitivity": 0.6710526315789473,
+      "specificity": 0.970193740685544
+    },
+    "df": {
+      "sensitivity": 0.42857142857142855,
+      "specificity": 0.9939475453934096
+    },
+    "mel": {
+      "sensitivity": 0.6470588235294118,
+      "specificity": 0.9357306809487376
+    },
+    "nv": {
+      "sensitivity": 0.928714859437751,
+      "specificity": 0.857429718875502
+    },
+    "vasc": {
+      "sensitivity": 0.9523809523809523,
+      "specificity": 0.9966055668703326
+    }
+  },
+  "classification_report": {
+    "akiec": {
+      "precision": 0.6086956521739131,
+      "recall": 0.4444444444444444,
+      "f1-score": 0.5137614678899083,
+      "support": 63.0
+    },
+    "bcc": {
+      "precision": 0.6911764705882353,
+      "recall": 0.6911764705882353,
+      "f1-score": 0.6911764705882353,
+      "support": 68.0
+    },
+    "bkl": {
+      "precision": 0.7183098591549296,
+      "recall": 0.6710526315789473,
+      "f1-score": 0.6938775510204082,
+      "support": 152.0
+    },
+    "df": {
+      "precision": 0.25,
+      "recall": 0.42857142857142855,
+      "f1-score": 0.3157894736842105,
+      "support": 7.0
+    },
+    "mel": {
+      "precision": 0.5902439024390244,
+      "recall": 0.6470588235294118,
+      "f1-score": 0.6173469387755102,
+      "support": 187.0
+    },
+    "nv": {
+      "precision": 0.928714859437751,
+      "recall": 0.928714859437751,
+      "f1-score": 0.928714859437751,
+      "support": 996.0
+    },
+    "vasc": {
+      "precision": 0.8,
+      "recall": 0.9523809523809523,
+      "f1-score": 0.8695652173913043,
+      "support": 21.0
+    },
+    "accuracy": 0.8340026773761714,
+    "macro avg": {
+      "precision": 0.6553058205419792,
+      "recall": 0.68048565864731,
+      "f1-score": 0.6614617112553326,
+      "support": 1494.0
+    },
+    "weighted avg": {
+      "precision": 0.8356469440659996,
+      "recall": 0.8340026773761714,
+      "f1-score": 0.8338364348488578,
+      "support": 1494.0
+    }
+  },
+  "macro_ovr_roc_auc": 0.9459243659000628,
+  "confidence_intervals_95": {
+    "level": 0.95,
+    "resamples": 1000,
+    "unit": "group",
+    "accuracy": [
+      0.8099,
+      0.8567
+    ],
+    "balanced_accuracy": [
+      0.6168,
+      0.7749
+    ],
+    "expected_calibration_error": [
+      0.0163,
+      0.0438
+    ],
+    "sensitivity": {
+      "akiec": [
+        0.3077,
+        0.5966
+      ],
+      "bcc": [
+        0.5507,
+        0.8195
+      ],
+      "bkl": [
+        0.5833,
+        0.7589
+      ],
+      "df": [
+        0.0,
+        1.0
+      ],
+      "mel": [
+        0.5588,
+        0.7314
+      ],
+      "nv": [
+        0.9099,
+        0.9476
+      ],
+      "vasc": [
+        0.8275,
+        1.0
+      ]
+    }
+  },
+  "concern_flag": {
+    "rule": "P(akiec + bcc + mel) >= 0.169862",
+    "sensitivity": 0.8616352201257862,
+    "specificity": 0.8248299319727891,
+    "confidence_intervals_95": {
+      "sensitivity": [
+        0.8086,
+        0.9064
+      ],
+      "specificity": [
+        0.7985,
+        0.8519
+      ]
+    }
+  },
+  "settings": {
+    "weights_sha256": "e0cf8e628dd81a5780e0bc5338c56908de47beec2a877fbbab02d0782fe8ecb2",
+    "tta": true,
+    "temperature": 0.9,
+    "logit_bias": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

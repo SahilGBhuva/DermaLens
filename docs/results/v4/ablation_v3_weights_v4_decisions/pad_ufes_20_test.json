@@ -1,0 +1,167 @@
+{
+  "dataset": {
+    "name": "PAD-UFES-20",
+    "citation": "Pacheco AGC et al. PAD-UFES-20: a skin lesion dataset composed of patient data and clinical images collected from smartphones. Data in Brief, 2020. doi:10.17632/zr7vgbcyr2.1",
+    "licence": "CC BY 4.0",
+    "images": 460,
+    "diagnostic_counts": {
+      "BCC": 173,
+      "ACK": 144,
+      "SEK": 48,
+      "NEV": 45,
+      "SCC": 37,
+      "MEL": 13
+    },
+    "mapping": {
+      "ACK": "akiec",
+      "BCC": "bcc",
+      "MEL": "mel",
+      "NEV": "nv",
+      "SEK": "bkl"
+    },
+    "note": "Models are applied unchanged; nothing was tuned on this dataset."
+  },
+  "models": {
+    "ablation_v3_weights": {
+      "confidence_intervals_95": {
+        "accuracy": [
+          0.7062,
+          0.7896
+        ],
+        "balanced_accuracy": [
+          0.6357,
+          0.7689
+        ],
+        "melanoma_sensitivity": [
+          0.5,
+          1.0
+        ],
+        "concerning_sensitivity": [
+          0.9858,
+          1.0
+        ],
+        "concerning_specificity": [
+          0.4091,
+          0.6275
+        ]
+      },
+      "images_scored": 423,
+      "accuracy": 0.7494089834515366,
+      "balanced_accuracy": 0.7059286843535398,
+      "melanoma_sensitivity": 0.7692307692307693,
+      "expected_calibration_error": 0.05553568466335322,
+      "per_class": {
+        "ACK": {
+          "dermalens_class": "akiec",
+          "images": 144,
+          "sensitivity": 0.7847222222222222
+        },
+        "BCC": {
+          "dermalens_class": "bcc",
+          "images": 173,
+          "sensitivity": 0.8034682080924855
+        },
+        "MEL": {
+          "dermalens_class": "mel",
+          "images": 13,
+          "sensitivity": 0.7692307692307693
+        },
+        "NEV": {
+          "dermalens_class": "nv",
+          "images": 45,
+          "sensitivity": 0.4222222222222222
+        },
+        "SEK": {
+          "dermalens_class": "bkl",
+          "images": 48,
+          "sensitivity": 0.75
+        }
+      },
+      "concerning_lesions": {
+        "description": "Flagged for a closer look when the truth is ACK, BCC, MEL or SCC",
+        "decision_rule": "P(akiec + bcc + mel) >= 0.169862",
+        "sensitivity": 0.9945504087193461,
+        "specificity": 0.5268817204301075
+      },
+      "scc_unmapped": {
+        "images": 37,
+        "flagged_as_concerning": 0.972972972972973
+      },
+      "accuracy_by_fitzpatrick_skin_type": {
+        "I–II": {
+          "images": 180,
+          "accuracy": 0.7611111111111111
+        },
+        "III–IV": {
+          "images": 84,
+          "accuracy": 0.7738095238095238
+        },
+        "V–VI": {
+          "images": 1,
+          "accuracy": 1.0
+        },
+        "not recorded": {
+          "images": 158,
+          "accuracy": 0.7215189873417721
+        }
+      },
+      "confusion_true_pad_vs_predicted": {
+        "ACK": {
+          "akiec": 113,
+          "bcc": 24,
+          "bkl": 6,
+          "df": 0,
+          "mel": 0,
+          "nv": 1,
+          "vasc": 0
+        },
+        "BCC": {
+          "akiec": 31,
+          "bcc": 139,
+          "bkl": 1,
+          "df": 0,
+          "mel": 1,
+          "nv": 1,
+          "vasc": 0
+        },
+        "MEL": {
+          "akiec": 0,
+          "bcc": 0,
+          "bkl": 3,
+          "df": 0,
+          "mel": 10,
+          "nv": 0,
+          "vasc": 0
+        },
+        "NEV": {
+          "akiec": 1,
+          "bcc": 6,
+          "bkl": 17,
+          "df": 0,
+          "mel": 1,
+          "nv": 19,
+          "vasc": 1
+        },
+        "SEK": {
+          "akiec": 6,
+          "bcc": 4,
+          "bkl": 36,
+          "df": 0,
+          "mel": 2,
+          "nv": 0,
+          "vasc": 0
+        },
+        "SCC": {
+          "akiec": 13,
+          "bcc": 23,
+          "bkl": 0,
+          "df": 0,
+          "mel": 0,
+          "nv": 0,
+          "vasc": 1
+        }
+      },
+      "weights_sha256": "e0cf8e628dd81a5780e0bc5338c56908de47beec2a877fbbab02d0782fe8ecb2"
+    }
+  }
+}

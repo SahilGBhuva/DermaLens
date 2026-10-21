@@ -8,7 +8,7 @@ Each year ends with something finished and checkable: a released model, a measur
 
 | Year | Theme | Finished by the end of the year |
 |---|---|---|
-| **1 (2026–27)** | Build it and test it honestly | Live site; v1 → v3; phone-photo test (done). **v4** with fewer false alarms and a sensitivity floor for every cancer type; confidence intervals on every number; a second outside test on dermoscopy from another hospital. |
+| **1 (2026–27)** | Build it and test it honestly | Live site; v1 → v3; phone-photo test; confidence intervals on every number; outside dermoscopy test at a second hospital (BCN20000: balanced accuracy falls below 0.50) — all done. v4 trained and failed its pre-registered photo criterion; **v4.1** (per-photo-type flag) is next. |
 | **2 (2027–28)** | Make it trustworthy | An **"I don't know" answer**: the model declines non-skin images and low-confidence cases, with a measured trade-off between how often it answers and how accurate it is. A **photo-quality check** (blur, lighting, framing) before analysis: first version live 2026-10-21 (in-browser brightness, glare and sharpness heuristics; next, thresholds set from the training-data distributions and checked against model errors). A test of whether the heatmap actually lands on the lesion, using expert lesion outlines. |
 | **3 (2028–29)** | Fairness and experts | **Skin-tone results** on datasets that cover darker skin, the gap reported and, if possible, reduced. **Feedback from dermatologists** on the wording, the failure cases and the second opinion, recorded with what changed. |
 | **4 (2029–30)** | Publish | A **research paper** (methods, every result with its uncertainty, limitations) submitted to a student journal or science fair; a frozen, reproducible release of code, models and splits. |
@@ -71,6 +71,16 @@ A short research report in paper format (abstract, methods, results with confide
 2. its flag leaves more benign lesions unflagged than v3 did (v3: 65.6%).
 
 **v4 replaces v2 for dermoscopy only if, on the HAM10000 test split,** its balanced accuracy is not clearly worse than v2's (the paired 95% interval of v4 − v2 includes 0 or is above it) **and** its flag catches at least 85% of concerning lesions. Otherwise v2 stays. Whatever the outcome, every number is reported.
+
+**Outcome (2026-10-21).** Phone criterion 2 failed (benign not flagged 43.0% vs v3's 65.6%); dermoscopy undecided (paired comparison not yet run). Neither v2 nor v3 is replaced. Details in `MODEL_CARD.md`.
+
+## v4.1 pre-registration (written 2026-10-21, before any v4.1 result)
+
+**Change, and only this change:** v4's weights and temperature, with **one flag threshold per photo type**, each the highest that keeps ≥ 90% concerning-lesion sensitivity on that domain's validation split. The API applies the threshold for the photo type the visitor chose. No retraining.
+
+**v4.1 replaces v3 for regular photos only if,** on the PAD-UFES-20 test patients, its flag catches ≥ 85% of concerning lesions **and** leaves more benign lesions unflagged than v3 (65.6%).
+
+**v4.1 replaces v2 for dermoscopy only if,** on the HAM10000 test split, the paired 95% interval of balanced accuracy v4.1 − v2 includes 0 or lies above it, **and** its flag catches ≥ 85% of concerning lesions. The same comparison is reported on BCN20000.
 
 ## Maintenance (held upgrades)
 
