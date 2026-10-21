@@ -693,6 +693,20 @@ main {
 .quickActions button:hover { transform: translateY(-1px); color: var(--ink); }
 .quickActions button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
+.qualityNote {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fdf3e7;
+  border: 1px solid #efcf9f;
+  color: #5a3b0f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.qualityNote b { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.qualityNote ul { margin: 4px 0; padding-left: 18px; }
+.qualityNote span { color: #7a5a2a; }
+
 .photoType { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 4px; }
 .photoType > span {
   color: #5f7290;

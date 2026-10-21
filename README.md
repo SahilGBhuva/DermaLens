@@ -42,6 +42,8 @@ Each trained model lives in its own folder (`models/v1/`, `models/v2/`) and the 
 - photo type switch: dermoscopy, or a regular photo, which runs through the same model and comes back with a reliability note (`image_type=photo`)
 - second opinion: run the same image through the other trained version (scores only, `explain=false`) and see whether the two agree
 - plain-language errors for a sleeping, busy or rate-limited server
+- in-browser photo check before upload: warns about darkness, glare or blur (advice only; nothing is sent for this check)
+- v4-ready "needs a closer look" flag, shown when the serving model defines one
 - FastAPI + PyTorch inference API
 - EfficientNet-B0 transfer-learning pipeline
 - HAM10000 metadata preparation

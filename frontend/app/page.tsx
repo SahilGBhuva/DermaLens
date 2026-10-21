@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 
+import { checkPhotoQuality, type PhotoQuality } from "../lib/photoQuality";
+
 type Prediction = {
   top_class: string;
   confidence: number;
@@ -171,6 +173,9 @@ export default function Home() {
   const storyRef = useRef<HTMLElement | null>(null);
   const heroFileRef = useRef<HTMLInputElement | null>(null);
   const dragDepth = useRef(0);
+  // In-browser photo check (blur, darkness, glare); advice only.
+  const [quality, setQuality] = useState<PhotoQuality | null>(null);
+  const qualityFor = useRef<File | null>(null);
 
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
   // The evaluation of the model that produced this result (versions differ).
@@ -289,10 +294,19 @@ export default function Home() {
     setAnalysisMs(null);
     setSandboxTab("prediction");
     setError("");
+    setQuality(null);
+    qualityFor.current = nextFile;
+    if (nextFile) {
+      checkPhotoQuality(nextFile).then((checked) => {
+        if (qualityFor.current === nextFile) setQuality(checked); // ignore a stale check
+      });
+    }
   }
 
   function resetSandbox() {
     setFile(null);
+    setQuality(null);
+    qualityFor.current = null;
     setResult(null);
     setStress(null);
     setAnalysisMs(null);
@@ -316,6 +330,7 @@ export default function Home() {
       image_type: result.image_type ?? imageType,
       reliability_note: result.reliability_note ?? null,
       model_version: result.model_version ?? null,
+      photo_check: quality,
       concern_score: result.concern_score ?? null,
       needs_closer_look: result.needs_closer_look ?? null,
       second_opinion: comparison
@@ -839,6 +854,18 @@ export default function Home() {
                   onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
                 />
               </label>
+
+              {quality && quality.warnings.length > 0 && (
+                <div className="qualityNote" role="status">
+                  <b>Photo check</b>
+                  <ul>
+                    {quality.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                  <span>You can still analyse it, but results on poor photos are less reliable.</span>
+                </div>
+              )}
 
               <div className="photoType">
                 <span id="photo-type-label">Photo type</span>
