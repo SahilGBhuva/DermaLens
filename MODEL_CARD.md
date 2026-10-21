@@ -249,6 +249,8 @@ The published v1, v2 and v3 were scored **unchanged** on BCN20000 (ISIC Archive 
 | Benign lesions not flagged | 0.871 | 0.835 | 0.665 | — |
 | Calibration error (ECE) | 0.222 | 0.150 | 0.182 | 0.315 |
 
+**Paired v3 − v2 on BCN20000** (16,284 mapped images, 4,591 lesions, `ml/compare_models.py`): balanced accuracy −0.018 (95% interval −0.037 to −0.002, a real but small loss); melanoma sensitivity +0.068 (+0.047 to +0.088, a real gain). File: [`docs/results/bcn20000/paired_v3_vs_v2.json`](docs/results/bcn20000/paired_v3_vs_v2.json).
+
 **What this shows.** Moving to another hospital's dermoscopy cuts balanced accuracy from about 0.73 to below 0.50 and melanoma sensitivity from 0.78 to 0.50 for v2. The HAM10000 numbers describe HAM10000-like images, not dermoscopy in general. Actinic keratoses (8–20% recognised) and basal cell carcinomas (32–44%) suffer most. This is the most important limitation found so far.
 
 ## v4: pre-registered result (2026-10-21)

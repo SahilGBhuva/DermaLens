@@ -1,0 +1,22 @@
+{
+  "a": "bcn20000_predictions.csv v2_",
+  "b": "bcn20000_predictions.csv v3_",
+  "images": 16284,
+  "groups": 4591,
+  "balanced_accuracy": {
+    "difference_b_minus_a": -0.018252263692197346,
+    "interval_95": [
+      -0.0366,
+      -0.0022
+    ],
+    "verdict": "B worse"
+  },
+  "melanoma_sensitivity": {
+    "difference_b_minus_a": 0.06769922558081437,
+    "interval_95": [
+      0.0473,
+      0.0879
+    ],
+    "verdict": "B better"
+  }
+}
