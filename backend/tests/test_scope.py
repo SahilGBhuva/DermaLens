@@ -48,7 +48,9 @@ def test_api_reports_scope_only_for_models_with_statistics(tmp_path, monkeypatch
     checked = client.post("/predict?model=v4", files=files).json()
     assert checked["in_scope"] is False and checked["scope_score"] > 0
     plain = client.post("/predict?model=v1", files=files).json()
-    assert plain["in_scope"] is None and plain["scope_score"] is None
+    # v1 has no fitted statistics, so no score; the test PNG is one flat colour,
+    # which the pixel rule alone already marks as not a skin photo.
+    assert plain["scope_score"] is None and plain["in_scope"] is False
 
 
 def test_each_photo_type_uses_its_own_threshold(tmp_path):
@@ -57,3 +59,27 @@ def test_each_photo_type_uses_its_own_threshold(tmp_path):
     score = check.score(np.array([2.0, 0.0]))  # 4.0
     assert not check.in_scope(score, "dermoscopy")
     assert check.in_scope(score, "phone") and check.in_scope(score, None)  # fallback is the loosest
+
+
+def test_pixel_rules_catch_plain_and_noise_but_not_photos():
+    import sys
+    from pathlib import Path
+
+    from PIL import Image
+
+    from app.scope import pixel_reason
+
+    rng = np.random.default_rng(0)
+    plain = Image.new("RGB", (300, 200), (180, 120, 90))
+    noise = Image.fromarray(rng.integers(0, 256, (200, 300, 3), dtype=np.uint8))
+    photo = Image.open(Path(__file__).resolve().parents[2] / "frontend/public/images/isic-0016128.webp")
+    assert pixel_reason(plain) == "plain colour"
+    assert pixel_reason(noise) == "noise"
+    assert pixel_reason(photo) is None
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ml"))
+    try:
+        from evaluate_scope import pixel_reason as ml_rule  # the copy used for measurement
+    finally:
+        sys.path.pop(0)
+    assert [ml_rule(im) for im in (plain, noise, photo)] == ["plain colour", "noise", None]

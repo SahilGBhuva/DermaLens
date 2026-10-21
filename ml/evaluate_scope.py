@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 from PIL import Image
 from sklearn.metrics import roc_auc_score
@@ -23,6 +24,17 @@ from fit_scope import extract_features, loader_for, scope_scores
 from model import build_model, eval_transform, load_config, pick_device
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+def pixel_reason(image) -> str | None:
+    """Same rule as backend/app/scope.py (plain colour or pure noise); keep in sync."""
+    grey = np.asarray(image.convert("L").resize((128, 128)), dtype=np.float32)
+    if grey.std() < 2.0:
+        return "plain colour"
+    left, right = grey[:, :-1].ravel(), grey[:, 1:].ravel()
+    if np.corrcoef(left, right)[0, 1] < 0.3:
+        return "noise"
+    return None
 
 
 class FolderImages(Dataset):
@@ -121,6 +133,16 @@ def main():
             k: float(roc_auc_score(np.r_[np.zeros(len(all_genuine)), np.ones(len(v))], np.r_[all_genuine, v]))
             for k, v in outside.items()
         },
+    }
+    # The pixel rules on their own: genuine test images should never trip them.
+    tripped = {}
+    for p in args.in_domain_csv:
+        paths = pd.read_csv(p)["image_path"]
+        tripped[domain_name(p)] = float(np.mean([pixel_reason(Image.open(x)) is not None for x in paths]))
+    synthetic = SyntheticImages(args.synthetic, transform)
+    result["pixel_rules"] = {
+        "genuine_tripped": tripped,
+        "noise_and_plain_caught": float(np.mean([pixel_reason(im) is not None for im in synthetic.images])),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2))

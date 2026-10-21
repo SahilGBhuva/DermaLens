@@ -14,7 +14,7 @@ from PIL import Image, ImageEnhance, ImageFilter
 from torchvision import models, transforms
 
 from .gradcam import GradCAM, overlay_heatmap
-from .scope import ScopeCheck
+from .scope import ScopeCheck, pixel_reason
 
 CLASSES = ["akiec", "bcc", "bkl", "df", "mel", "nv", "vasc"]
 MODELS_DIR = Path(__file__).resolve().parents[2] / "models"
@@ -132,6 +132,8 @@ class DermaLensModel:
         if self.scope is not None:
             scope_score = self.scope.score(features[0].cpu().numpy())
             in_scope = self.scope.in_scope(scope_score, domain)
+        if pixel_reason(image) is not None:  # plain colour or noise: never a skin photo
+            in_scope = False
 
         top_idx = int(torch.argmax(p).item())
         confidence = float(p[top_idx].item())
