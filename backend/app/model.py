@@ -122,7 +122,7 @@ class DermaLensModel:
         model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, len(CLASSES))
         return model.to(self.device)
 
-    def _predict_summary(self, image: Image.Image):
+    def _predict_summary(self, image: Image.Image, domain: str | None = None):
         x = self.transform(image.convert("RGB")).unsqueeze(0).to(self.device)
         with torch.inference_mode():
             p, features = self._probabilities(x)
@@ -131,7 +131,7 @@ class DermaLensModel:
         scope_score = in_scope = None
         if self.scope is not None:
             scope_score = self.scope.score(features[0].cpu().numpy())
-            in_scope = self.scope.in_scope(scope_score)
+            in_scope = self.scope.in_scope(scope_score, domain)
 
         top_idx = int(torch.argmax(p).item())
         confidence = float(p[top_idx].item())
@@ -189,7 +189,7 @@ class DermaLensModel:
             "scope_check": self.scope is not None,
         }
 
-    def predict(self, image: Image.Image, explain: bool = True) -> Prediction:
+    def predict(self, image: Image.Image, explain: bool = True, domain: str | None = None) -> Prediction:
         if self.demo_mode:
             probs = {label: 1.0 / len(CLASSES) for label in CLASSES}
             return Prediction(
@@ -203,7 +203,7 @@ class DermaLensModel:
             )
 
         original = image.convert("RGB")
-        summary = self._predict_summary(original)
+        summary = self._predict_summary(original, domain)
         if not explain:  # scores only, e.g. a second model for comparison
             return Prediction(
                 probabilities=summary["probabilities"],

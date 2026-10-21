@@ -105,7 +105,15 @@ def main():
         outside[args.ood_name] = scores_of(DataLoader(FolderImages(paths, transform), batch_size=args.batch_size, num_workers=2))
 
     all_genuine = np.concatenate(list(genuine.values()))
+
+    def rates_at(t):
+        return {
+            "genuine_accepted": {k: float((v <= t).mean()) for k, v in genuine.items()},
+            "non_skin_refused": {k: float((v > t).mean()) for k, v in outside.items()},
+        }
+
     result = {
+        "per_domain_thresholds": {name: {"threshold": t, **rates_at(t)} for name, t in scope.get("thresholds", {}).items()},
         "threshold": threshold,
         "genuine_accepted": {k: {"images": int(len(v)), "accepted": float((v <= threshold).mean())} for k, v in genuine.items()},
         "non_skin_refused": {k: {"images": int(len(v)), "refused": float((v > threshold).mean())} for k, v in outside.items()},
@@ -116,6 +124,9 @@ def main():
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2))
+    # Every score, so other thresholds can be studied without re-running.
+    np.savez_compressed(args.output.with_suffix(".scores.npz"),
+                        **{f"genuine:{k}": v for k, v in genuine.items()}, **{f"outside:{k}": v for k, v in outside.items()})
     print(json.dumps(result, indent=2))
 
 

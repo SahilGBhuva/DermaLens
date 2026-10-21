@@ -18,10 +18,11 @@ log = logging.getLogger("dermalens.scope")
 
 
 class ScopeCheck:
-    def __init__(self, means: np.ndarray, present: np.ndarray, precision: np.ndarray, threshold: float):
+    def __init__(self, means, present, precision, threshold: float, thresholds: dict | None = None):
         self.means = means[present].astype(np.float32)
         self.precision = precision.astype(np.float32)
-        self.threshold = float(threshold)
+        self.threshold = float(threshold)  # fallback: the loosest per-domain threshold
+        self.thresholds = {k: float(v) for k, v in (thresholds or {}).items()}
 
     @classmethod
     def load(cls, folder: Path, spec: dict | None) -> "ScopeCheck | None":
@@ -37,11 +38,13 @@ class ScopeCheck:
             log.error("Refusing %s: sha256 %s does not match model_config.json", path.name, actual)
             return None
         with np.load(path, allow_pickle=False) as stats:
-            return cls(stats["means"], stats["present"].astype(bool), stats["precision"], spec["threshold"])
+            return cls(stats["means"], stats["present"].astype(bool), stats["precision"], spec["threshold"],
+                       spec.get("thresholds"))
 
     def score(self, features: np.ndarray) -> float:
         diff = self.means - features.astype(np.float32)[None, :]
         return float(np.einsum("ij,jk,ik->i", diff, self.precision, diff).min())
 
-    def in_scope(self, score: float) -> bool:
-        return score <= self.threshold
+    def in_scope(self, score: float, domain: str | None = None) -> bool:
+        """Compare with the threshold fitted for this domain ("dermoscopy" or "phone")."""
+        return score <= self.thresholds.get(domain or "", self.threshold)

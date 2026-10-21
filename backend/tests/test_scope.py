@@ -49,3 +49,11 @@ def test_api_reports_scope_only_for_models_with_statistics(tmp_path, monkeypatch
     assert checked["in_scope"] is False and checked["scope_score"] > 0
     plain = client.post("/predict?model=v1", files=files).json()
     assert plain["in_scope"] is None and plain["scope_score"] is None
+
+
+def test_each_photo_type_uses_its_own_threshold(tmp_path):
+    spec = write_stats(tmp_path, np.zeros((1, 2)), np.array([True]), np.eye(2), threshold=9.0)
+    check = ScopeCheck.load(tmp_path, {**spec, "thresholds": {"dermoscopy": 1.0, "phone": 9.0}})
+    score = check.score(np.array([2.0, 0.0]))  # 4.0
+    assert not check.in_scope(score, "dermoscopy")
+    assert check.in_scope(score, "phone") and check.in_scope(score, None)  # fallback is the loosest

@@ -8,8 +8,11 @@ image features (the 1,280 numbers before its final layer):
    (Ledoit-Wolf shrinkage, because 1,280 dimensions is a lot).
 2. A new image's score is its smallest Mahalanobis distance to any class
    mean (Lee et al., 2018). Far from every class = probably not a skin lesion.
-3. The threshold is set on VALIDATION images so at least `--accept-rate` of
-   genuine images are accepted in EVERY domain (dermoscopy and phone).
+3. Thresholds are set on VALIDATION images: one per domain (named by the
+   validation file's folder, e.g. "dermoscopy" and "phone"), each accepting
+   `--accept-rate` of that domain's genuine images. The API uses the one for
+   the photo type the visitor chose; "threshold" (the loosest) is the
+   fallback.
 
 ml/evaluate_scope.py then measures how many genuine test images are accepted
 and how many non-skin images are refused. The test splits are never read here.
@@ -117,7 +120,8 @@ def main():
         f, _ = extract_features(model, loader_for(path, config, args.batch_size), device)
         val_scores[domain_name(path)] = scope_scores(f, means, precision)
         thresholds.append(float(np.quantile(val_scores[domain_name(path)], args.accept_rate)))
-    threshold = max(thresholds)  # every domain keeps at least the target acceptance
+    threshold = max(thresholds)  # fallback: every domain keeps at least the target acceptance
+    per_domain = {Path(p).parent.name: round(t, 4) for p, t in zip(args.val_csv, thresholds)}
     for name, scores in val_scores.items():
         accepted[name] = float((scores <= threshold).mean())
 
@@ -130,6 +134,7 @@ def main():
         "stats_file": stats_path.name,
         "stats_sha256": hashlib.sha256(stats_path.read_bytes()).hexdigest(),
         "threshold": round(threshold, 4),
+        "thresholds": per_domain,
         "accept_rate_target": args.accept_rate,
         "training_images": int(len(train)),
         "validation_accept": accepted,

@@ -298,7 +298,8 @@ async def predict(
     image_type = check_image_type(image_type)
     entry = pick_model(model, image_type)
     image = await load_image(file)
-    result = await run_inference(partial(entry.model.predict, explain=explain), image)
+    domain = "phone" if image_type == "photo" else "dermoscopy"  # which out-of-scope threshold applies
+    result = await run_inference(partial(entry.model.predict, explain=explain, domain=domain), image)
 
     return {
         "model_version": entry.version,
