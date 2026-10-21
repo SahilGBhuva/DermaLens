@@ -1,0 +1,90 @@
+name: Train v4 (separate probabilities and decisions)
+
+# v4 = v2 fine-tuned longer on PAD-UFES-20 + a larger HAM10000 replay, with
+# temperature-only probabilities and a separate "needs a closer look" flag
+# whose threshold keeps >= 90% concerning-lesion sensitivity on each
+# validation domain (ml/fit_decisions.py). Pre-registered success criteria:
+# docs/ROADMAP.md, "v4 pre-registration". Also runs the pre-registered
+# ablation: v3's weights with v4's decision layer. Started by hand; results
+# stay an artifact until reviewed.
+on:
+  workflow_dispatch:
+    inputs:
+      epochs:
+        description: "Maximum fine-tuning epochs"
+        default: "15"
+      ham_replay:
+        description: "HAM10000 train images mixed in"
+        default: "5000"
+
+permissions:
+  contents: read
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - uses: ./.github/actions/fetch-data
+        with:
+          models: v1,v2,v3
+
+      - name: Train, fit decisions and test v4
+        env:
+          EPOCHS: ${{ inputs.epochs }}
+          HAM_REPLAY: ${{ inputs.ham_replay }}
+        run: |
+          python ml/run_v3_pipeline.py --version v4 --decision concern \
+            --ham-metadata "$RUNNER_TEMP/ham/metadata.csv" --ham-images "$RUNNER_TEMP/ham/images" \
+            --pad-metadata "$RUNNER_TEMP/pad/metadata.csv" --pad-images "$RUNNER_TEMP/pad/images" \
+            --epochs "$EPOCHS" --patience 4 --ham-replay "$HAM_REPLAY" \
+            --compare-models models/v2,models/v3 \
+            --work-dir "$RUNNER_TEMP/v4" --output-dir models/v4
+
+      - name: Ablation (pre-registered) - v3 weights with v4's decision layer
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/v4"
+          A=models/v4/ablation_v3_weights
+          mkdir -p "$A"
+          cp models/v3/dermalens_efficientnet_b0.pt "$A/"
+          python ml/fit_decisions.py --weights "$A/dermalens_efficientnet_b0.pt" \
+            --val-csv "$W/dermoscopy.csv" "$W/phone.csv" --config "$A/model_config.json"
+          python ml/evaluate.py --csv "$W/ham_splits/test.csv" --weights "$A/dermalens_efficientnet_b0.pt" \
+            --config "$A/model_config.json" --output "$A/evaluation.json"
+          (cd ml && python evaluate_external.py --metadata "$W/pad_splits/test.csv" --images-dir "$W/pad_splits/images" \
+            --models "../$A" --output "../$A/pad_ufes_20_test.json")
+          rm "$A/dermalens_efficientnet_b0.pt"
+
+      - name: Summary
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          ham = json.load(open("models/v4/evaluation.json"))
+          pad = json.load(open("models/v4/pad_ufes_20_test.json"))
+          abl = json.load(open("models/v4/ablation_v3_weights/pad_ufes_20_test.json"))["models"]["ablation_v3_weights"]
+          print("## v4 (each test split scored once)\n")
+          cf = ham.get("concern_flag", {})
+          print(f"**HAM10000 test:** balanced accuracy {ham['balanced_accuracy']:.3f}, ECE {ham['expected_calibration_error']:.3f}, "
+                f"flag sensitivity {cf.get('sensitivity')}, specificity {cf.get('specificity')}\n")
+          print("**PAD-UFES-20 test patients:**\n")
+          print("| Model | Balanced accuracy | ECE | Flag sensitivity | Flag specificity |\n|---|---|---|---|---|")
+          rows = list(pad["models"].items()) + [("v3 weights + v4 decisions (ablation)", abl)]
+          for v, m in rows:
+              c = m["concerning_lesions"]
+              print(f"| {v} | {m['balanced_accuracy']:.3f} | {m['expected_calibration_error']:.3f} | "
+                    f"{c['sensitivity']:.3f} | {c['specificity']:.3f} |")
+          EOF
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dermalens-v4
+          path: models/v4/
+          retention-days: 90

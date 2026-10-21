@@ -79,7 +79,7 @@ def load_metadata(metadata: Path, images_dir: Path) -> pd.DataFrame:
     return frame
 
 
-def run_model(model_dir: Path, frame: pd.DataFrame, images_dir: Path, batch_size: int) -> np.ndarray:
+def run_model(model_dir: Path, frame: pd.DataFrame, images_dir: Path, batch_size: int) -> tuple[np.ndarray, dict]:
     config = load_config(model_dir / "model_config.json")
     weights = model_dir / "dermalens_efficientnet_b0.pt"
     if config.get("weights_sha256") and config["weights_sha256"] != sha256(weights):
@@ -99,10 +99,22 @@ def run_model(model_dir: Path, frame: pd.DataFrame, images_dir: Path, batch_size
             probs[idx.numpy()] = batch.cpu().numpy()
             print(f"  {model_dir.name}: {min(int(idx[-1]) + 1, len(frame))}/{len(frame)}", end="\r", flush=True)
     print()
-    return probs
+    return probs, config
 
 
-def summarize(frame: pd.DataFrame, probs: np.ndarray) -> dict:
+def concern_flags(probs: np.ndarray, predicted: np.ndarray, concern: dict | None) -> np.ndarray:
+    """The model's own "needs a closer look" decision for each row.
+
+    v4+ configs carry a `concern` threshold on P(akiec) + P(bcc) + P(mel);
+    earlier versions flag when the top class is one of those classes.
+    """
+    if concern:
+        index = [CLASSES.index(name) for name in concern["classes"]]
+        return probs[:, index].sum(axis=1) >= concern["threshold"]
+    return np.isin(predicted, list(CONCERNING))
+
+
+def summarize(frame: pd.DataFrame, probs: np.ndarray, concern: dict | None = None) -> dict:
     """Metrics for one model's probabilities over the PAD-UFES-20 rows."""
     predicted = np.array([CLASSES[i] for i in probs.argmax(1)])
     diagnostic = frame["diagnostic"].to_numpy()
@@ -122,7 +134,7 @@ def summarize(frame: pd.DataFrame, probs: np.ndarray) -> dict:
     class_index = {name: i for i, name in enumerate(CLASSES)}
     ece = expected_calibration_error([class_index[t] for t in truth[mapped]], probs[mapped])
 
-    flagged = np.isin(predicted, list(CONCERNING))
+    flagged = concern_flags(probs, predicted, concern)
     should_flag = np.isin(diagnostic, list(CONCERNING_TRUTH))
     scc = diagnostic == UNMAPPED
 
@@ -154,7 +166,7 @@ def summarize(frame: pd.DataFrame, probs: np.ndarray) -> dict:
         d, p, t, m = diagnostic[rows], predicted[rows], truth[rows], mapped[rows]
         recalls = [float((p[d == code] == name).mean()) for code, name in PAD_TO_DERMALENS.items() if (d == code).any()]
         concerning = np.isin(d, list(CONCERNING_TRUTH))
-        flags = np.isin(p, list(CONCERNING))
+        flags = flagged[rows]
         return {
             "accuracy": float((p[m] == t[m]).mean()) if m.any() else None,
             "balanced_accuracy": float(np.mean(recalls)) if len(recalls) == len(PAD_TO_DERMALENS) else None,
@@ -172,7 +184,11 @@ def summarize(frame: pd.DataFrame, probs: np.ndarray) -> dict:
         "expected_calibration_error": ece,
         "per_class": per_class,
         "concerning_lesions": {
-            "description": "Flagged as akiec, bcc or mel when the truth is ACK, BCC, MEL or SCC",
+            "description": "Flagged for a closer look when the truth is ACK, BCC, MEL or SCC",
+            "decision_rule": (
+                f"P({' + '.join(concern['classes'])}) >= {concern['threshold']}" if concern
+                else "top class is akiec, bcc or mel"
+            ),
             "sensitivity": float(flagged[should_flag].mean()) if should_flag.any() else None,
             "specificity": float((~flagged[~should_flag]).mean()) if (~should_flag).any() else None,
         },
@@ -211,8 +227,8 @@ def main():
         "models": {},
     }
     for folder in [Path(p.strip()) for p in args.models.split(",") if p.strip()]:
-        probs = run_model(folder, frame, args.images_dir, args.batch_size)
-        summary = summarize(frame, probs)
+        probs, config = run_model(folder, frame, args.images_dir, args.batch_size)
+        summary = summarize(frame, probs, config.get("concern"))
         summary["weights_sha256"] = sha256(folder / "dermalens_efficientnet_b0.pt")
         results["models"][folder.name] = summary
         print(f"{folder.name}: balanced accuracy {summary['balanced_accuracy']:.3f}, "

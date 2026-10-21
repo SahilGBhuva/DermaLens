@@ -1,4 +1,4 @@
-"""v3: v2 fine-tuned on smartphone photos as well as dermoscopy.
+"""v3 / v4: v2 fine-tuned on smartphone photos as well as dermoscopy.
 
 Same discipline as ml/run_pipeline.py:
 
@@ -7,9 +7,12 @@ Same discipline as ml/run_pipeline.py:
 2. Train from v2's weights on PAD-UFES-20 train plus a replay sample of
    HAM10000 train, so dermoscopy is not forgotten. The epoch is chosen on
    VALIDATION only: the mean balanced accuracy of the two domains.
-3. Calibrate on the two validation splits together (same method as v2).
+3. Calibrate on the two validation splits: v3 uses v2's per-class offsets
+   (--decision bias); v4 uses temperature-only probabilities plus a separate
+   "needs a closer look" threshold with a sensitivity floor per domain
+   (--decision concern, ml/fit_decisions.py).
 4. Score each TEST split exactly once: HAM10000 test for v3, and the
-   PAD-UFES-20 test patients for v1, v2 and v3 side by side.
+   PAD-UFES-20 test patients for the comparison models and the new one.
 """
 
 import argparse
@@ -41,6 +44,15 @@ def main():
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--work-dir", default="data/v3")
     parser.add_argument("--output-dir", default="models/v3")
+    parser.add_argument("--version", default="v3")
+    parser.add_argument(
+        "--decision",
+        choices=["bias", "concern"],
+        default="bias",
+        help="bias: v3's per-class offsets (ml/calibrate.py); concern: v4's temperature-only "
+        "probabilities plus a separate 'needs a closer look' threshold (ml/fit_decisions.py)",
+    )
+    parser.add_argument("--target-sensitivity", type=float, default=0.90, help="concern flag floor, per domain")
     args = parser.parse_args()
 
     work, out = Path(args.work_dir), Path(args.output_dir)
@@ -74,17 +86,24 @@ def main():
          "--epochs", args.epochs, "--patience", args.patience, "--lr", args.lr,
          "--batch-size", args.batch_size, "--output", weights, "--history", out / "training_history.json"])
 
-    # 3. Calibrate on both validation splits.
-    both_val = pd.concat([pd.read_csv(work / "dermoscopy.csv")[["image_path", "label"]], pd.read_csv(work / "phone.csv")])
-    both_val.to_csv(work / "val_both.csv", index=False)
+    # 3. Calibrate / fit decisions on the validation splits only.
     config = out / "model_config.json"
-    run([py, ml / "calibrate.py", "--csv", work / "val_both.csv", "--weights", weights, "--config", config,
-         "--batch-size", args.batch_size])
+    if args.decision == "concern":
+        run([py, ml / "fit_decisions.py", "--weights", weights, "--val-csv", work / "dermoscopy.csv", work / "phone.csv",
+             "--config", config, "--target-sensitivity", args.target_sensitivity, "--batch-size", args.batch_size])
+    else:
+        both_val = pd.concat([pd.read_csv(work / "dermoscopy.csv")[["image_path", "label"]], pd.read_csv(work / "phone.csv")])
+        both_val.to_csv(work / "val_both.csv", index=False)
+        run([py, ml / "calibrate.py", "--csv", work / "val_both.csv", "--weights", weights, "--config", config,
+             "--batch-size", args.batch_size])
     settings = json.loads(config.read_text())
     settings.update(
         {
-            "version": "v3",
-            "recipe": "v2 fine-tuned on PAD-UFES-20 train + HAM10000 replay",
+            "version": args.version,
+            "recipe": (
+                f"v2 fine-tuned on PAD-UFES-20 train + HAM10000 replay ({args.epochs} epochs max, "
+                f"{args.ham_replay} replay); decisions: {args.decision}"
+            ),
             "training_data": {
                 "phone_photos": int(len(pad_train)),
                 "dermoscopy_replay": int(len(replay)),
@@ -101,7 +120,7 @@ def main():
          "--models", f"{args.compare_models},{out}", "--batch-size", args.batch_size,
          "--output", out / "pad_ufes_20_test.json"])
 
-    print("\nv3 pipeline complete:", ", ".join(sorted(p.name for p in out.iterdir())))
+    print(f"\n{args.version} pipeline complete:", ", ".join(sorted(p.name for p in out.iterdir())))
 
 
 if __name__ == "__main__":

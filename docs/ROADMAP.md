@@ -60,6 +60,18 @@ Ask a dermatologist or a medical-imaging researcher to review the interface word
 
 A short research report in paper format (abstract, methods, results with confidence intervals, limitations), plus a poster and the demo video. Possible venues: a preprint, a student research journal, or a science fair.
 
+## v4 pre-registration (written 2026-10-21, before any v4 result)
+
+**Change.** v4 separates probabilities from decisions. Probabilities: temperature scaling only, no per-class offsets. Decision: "needs a closer look" when P(akiec) + P(bcc) + P(mel) reaches a threshold, set on validation as the highest value that keeps concerning-lesion sensitivity at or above 90% on the dermoscopy and the phone validation splits separately. Training: v2's weights fine-tuned on PAD-UFES-20 train plus a 5,000-image HAM10000 replay, up to 15 epochs (patience 4), epoch chosen on the mean validation balanced accuracy of the two domains (`.github/workflows/train-v4.yml`).
+
+**Ablation, also fixed in advance.** v3's weights with v4's decision layer, to separate the effect of the decision layer from the effect of longer training.
+
+**v4 replaces v3 for regular photos only if, on the PAD-UFES-20 test patients:**
+1. its flag still catches at least 85% of concerning lesions (lower 95% bound reported, not used as a gate), and
+2. its flag leaves more benign lesions unflagged than v3 did (v3: 65.6%).
+
+**v4 replaces v2 for dermoscopy only if, on the HAM10000 test split,** its balanced accuracy is not clearly worse than v2's (the paired 95% interval of v4 − v2 includes 0 or is above it) **and** its flag catches at least 85% of concerning lesions. Otherwise v2 stays. Whatever the outcome, every number is reported.
+
 ## Maintenance (held upgrades)
 
 These are planned by hand rather than merged from Dependabot:

@@ -15,7 +15,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from dataset import SkinLesionDataset
-from metrics import summarize_metrics
+from metrics import grouped_bootstrap, summarize_metrics
 from model import CLASSES, apply_calibration, build_model, eval_transform, load_config, pick_device, predict_proba, sha256
 
 
@@ -61,6 +61,24 @@ def main():
     frame = pd.read_csv(args.csv)  # the loader keeps CSV order (shuffle=False)
     groups = frame["lesion_id"].to_numpy() if "lesion_id" in frame.columns else None
     metrics = summarize_metrics(all_y, probabilities, CLASSES, groups=groups)
+    concern = config.get("concern")
+    if concern:  # v4+: the separate "needs a closer look" decision
+        y = np.asarray(all_y)
+        index = [CLASSES.index(name) for name in concern["classes"]]
+        flags = probabilities[:, index].sum(axis=1) >= concern["threshold"]
+        truth = np.isin(y, index)
+        metrics["concern_flag"] = {
+            "rule": f"P({' + '.join(concern['classes'])}) >= {concern['threshold']}",
+            "sensitivity": float(flags[truth].mean()) if truth.any() else None,
+            "specificity": float((~flags[~truth]).mean()) if (~truth).any() else None,
+            "confidence_intervals_95": grouped_bootstrap(
+                lambda rows: {
+                    "sensitivity": flags[rows][truth[rows]].mean() if truth[rows].any() else None,
+                    "specificity": (~flags[rows][~truth[rows]]).mean() if (~truth[rows]).any() else None,
+                },
+                groups if groups is not None else np.arange(len(y)),
+            ),
+        }
     if args.predictions:
         keep = [c for c in ("image_id", "img_id", "lesion_id", "patient_id", "label") if c in frame.columns]
         out = frame[keep].copy()
