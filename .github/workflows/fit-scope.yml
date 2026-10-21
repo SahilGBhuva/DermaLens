@@ -1,0 +1,93 @@
+name: Fit and test the out-of-scope check
+
+# For each requested published model: fit the "does this look like a skin
+# photo?" check on training images (ml/fit_scope.py), set its threshold on
+# validation images, then measure on the test splits and on non-skin photos
+# (Imagenette validation images, plus generated noise and plain colours).
+# Results and the fitted statistics stay an artifact until reviewed.
+#
+# Imagenette: a 10-class subset of ImageNet by fast.ai, used here only as
+# "photos that are not skin lesions" for testing; ImageNet terms apply
+# (non-commercial research). Its download has no published checksum, so the
+# job prints the SHA-256 it received.
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Comma-separated published versions"
+        default: "v2,v3"
+
+permissions:
+  contents: read
+
+jobs:
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - uses: ./.github/actions/fetch-data
+        with:
+          models: ${{ inputs.models }}
+
+      - name: Rebuild the fixed splits
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/work"
+          python ml/prepare_ham10000.py --metadata "$RUNNER_TEMP/ham/metadata.csv" \
+            --images-dir "$RUNNER_TEMP/ham/images" --output-dir "$W/dermoscopy"
+          python ml/prepare_pad_ufes_20.py --metadata "$RUNNER_TEMP/pad/metadata.csv" \
+            --images-dir "$RUNNER_TEMP/pad/images" --output-dir "$W/phone"
+
+      - name: Download Imagenette (non-skin photos for testing)
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/imagenette.tgz" https://s3.amazonaws.com/fast-ai-imageclas/imagenette2-160.tgz
+          sha256sum "$RUNNER_TEMP/imagenette.tgz"
+          tar -xzf "$RUNNER_TEMP/imagenette.tgz" -C "$RUNNER_TEMP" imagenette2-160/val
+          echo "Imagenette validation images: $(find "$RUNNER_TEMP/imagenette2-160/val" -type f | wc -l)"
+
+      - name: Fit and test each model
+        env:
+          VERSIONS: ${{ inputs.models }}
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/work"
+          for v in $(echo "$VERSIONS" | tr ',' ' '); do
+            O="scope/$v"
+            mkdir -p "$O"
+            cp "models/$v/dermalens_efficientnet_b0.pt" "models/$v/model_config.json" "$O/"
+            python ml/fit_scope.py --weights "$O/dermalens_efficientnet_b0.pt" --config "$O/model_config.json" \
+              --train-csv "$W/dermoscopy/train.csv" "$W/phone/train.csv" \
+              --val-csv "$W/dermoscopy/val.csv" "$W/phone/val.csv" --work-dir "$RUNNER_TEMP/scope-$v"
+            python ml/evaluate_scope.py --weights "$O/dermalens_efficientnet_b0.pt" --config "$O/model_config.json" \
+              --in-domain-csv "$W/dermoscopy/test.csv" "$W/phone/test.csv" \
+              --ood-dir "$RUNNER_TEMP/imagenette2-160/val" --ood-name "everyday photos (Imagenette)" \
+              --output "$O/scope_evaluation.json"
+            rm "$O/dermalens_efficientnet_b0.pt"
+          done
+
+      - name: Summary
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          print("## Out-of-scope check\n")
+          for path in sorted(pathlib.Path("scope").glob("*/scope_evaluation.json")):
+              d = json.loads(path.read_text())
+              acc = ", ".join(f"{k} {v['accepted']:.1%}" for k, v in d["genuine_accepted"].items())
+              ref = ", ".join(f"{k} {v['refused']:.1%}" for k, v in d["non_skin_refused"].items())
+              auc = ", ".join(f"{k} {v:.3f}" for k, v in d["roc_auc_genuine_vs_non_skin"].items())
+              print(f"**{path.parent.name}:** genuine accepted: {acc}. Non-skin refused: {ref}. ROC-AUC: {auc}.\n")
+          EOF
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scope-check
+          path: scope/
+          retention-days: 90
