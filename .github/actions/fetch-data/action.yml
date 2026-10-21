@@ -2,12 +2,16 @@ name: Fetch DermaLens models and datasets
 description: >
   Installs CPU PyTorch and the ml/ pins, downloads the requested published
   model versions (checked against the hashes pinned in backend/app/registry.py)
-  and both datasets (checked against their publishers' checksums) into
-  $RUNNER_TEMP/ham and $RUNNER_TEMP/pad.
+  and, unless `datasets` says otherwise, both datasets (checked against their
+  publishers' checksums) into $RUNNER_TEMP/ham and $RUNNER_TEMP/pad.
 inputs:
   models:
     description: "Comma-separated model versions to download, e.g. v1,v2"
     required: true
+  datasets:
+    description: "Which datasets to fetch: ham, pad, both (default) or none"
+    required: false
+    default: "ham,pad"
 runs:
   using: composite
   steps:
@@ -43,6 +47,7 @@ runs:
         EOF
 
     - name: Download HAM10000 (checked against Dataverse's MD5)
+      if: contains(inputs.datasets, 'ham')
       shell: bash
       run: |
         set -euo pipefail
@@ -64,6 +69,7 @@ runs:
         echo "HAM10000 images: $(ls "$D/images" | wc -l)"
 
     - name: Download PAD-UFES-20 (checked against Mendeley's SHA-256)
+      if: contains(inputs.datasets, 'pad')
       shell: bash
       run: |
         set -euo pipefail

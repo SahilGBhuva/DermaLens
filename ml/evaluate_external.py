@@ -1,4 +1,8 @@
-"""Score trained models, unchanged, on PAD-UFES-20 smartphone photos.
+"""Score trained models, unchanged, on an outside dataset.
+
+Datasets (``--dataset``): PAD-UFES-20 smartphone photos (default) and
+BCN20000 dermoscopy from Hospital Clinic Barcelona (see DATASETS below and
+ml/prepare_bcn20000.py).
 
 PAD-UFES-20 (Pacheco et al., 2020, CC BY 4.0) holds 2,298 clinical photos
 taken with smartphones in Brazil: a different country, camera type and
@@ -45,6 +49,32 @@ CONCERNING = {"akiec", "bcc", "mel"}
 # Ground truth that warrants one: everything except moles and seborrheic keratoses.
 CONCERNING_TRUTH = {"ACK", "BCC", "MEL", "SCC"}
 
+# Every supported dataset: its diagnostic codes -> DermaLens classes, the code
+# with no DermaLens class (scored only as "flagged as concerning"), and which
+# true codes warrant a closer look.
+DATASETS = {
+    "pad_ufes_20": {
+        "name": "PAD-UFES-20",
+        "citation": "Pacheco AGC et al. PAD-UFES-20: a skin lesion dataset composed of patient data and "
+        "clinical images collected from smartphones. Data in Brief, 2020. doi:10.17632/zr7vgbcyr2.1",
+        "licence": "CC BY 4.0",
+        "mapping": PAD_TO_DERMALENS,
+        "unmapped": UNMAPPED,
+        "concerning": CONCERNING_TRUTH,
+    },
+    "bcn20000": {
+        "name": "BCN20000 (Hospital Clinic Barcelona, via the ISIC Archive)",
+        "citation": "Hernandez-Perez C. et al. BCN20000: Dermoscopic lesions in the wild. Scientific Data, 2024. "
+        "ISIC Archive collection 249.",
+        "licence": "CC BY-NC",
+        "mapping": {
+            "AK": "akiec", "BCC": "bcc", "BKL": "bkl", "DF": "df", "MEL": "mel", "NV": "nv", "VASC": "vasc",
+        },
+        "unmapped": "SCC",
+        "concerning": {"AK", "BCC", "MEL", "SCC"},
+    },
+}
+
 
 class PadDataset(Dataset):
     def __init__(self, frame: pd.DataFrame, images_dir: Path, transform):
@@ -60,7 +90,8 @@ class PadDataset(Dataset):
         return self.transform(image), idx
 
 
-def load_metadata(metadata: Path, images_dir: Path) -> pd.DataFrame:
+def load_metadata(metadata: Path, images_dir: Path, dataset: str = "pad_ufes_20") -> pd.DataFrame:
+    spec = DATASETS[dataset]
     frame = pd.read_csv(metadata)
     missing = {"img_id", "diagnostic"} - set(frame.columns)
     if missing:
@@ -70,7 +101,7 @@ def load_metadata(metadata: Path, images_dir: Path) -> pd.DataFrame:
     unsafe = [name for name in frame["img_id"] if Path(str(name)).name != str(name) or str(name).startswith(".")]
     if unsafe:
         raise ValueError(f"img_id must be a plain file name, got e.g. {unsafe[:3]}")
-    unknown = set(frame["diagnostic"]) - set(PAD_TO_DERMALENS) - {UNMAPPED}
+    unknown = set(frame["diagnostic"]) - set(spec["mapping"]) - {spec["unmapped"]}
     if unknown:
         raise ValueError(f"unexpected diagnostic codes: {sorted(unknown)}")
     absent = [name for name in frame["img_id"] if not (images_dir / name).exists()]
@@ -114,15 +145,17 @@ def concern_flags(probs: np.ndarray, predicted: np.ndarray, concern: dict | None
     return np.isin(predicted, list(CONCERNING))
 
 
-def summarize(frame: pd.DataFrame, probs: np.ndarray, concern: dict | None = None) -> dict:
-    """Metrics for one model's probabilities over the PAD-UFES-20 rows."""
+def summarize(frame: pd.DataFrame, probs: np.ndarray, concern: dict | None = None, dataset: str = "pad_ufes_20") -> dict:
+    """Metrics for one model's probabilities over the dataset's rows."""
+    spec = DATASETS[dataset]
+    mapping, unmapped, concerning_truth = spec["mapping"], spec["unmapped"], spec["concerning"]
     predicted = np.array([CLASSES[i] for i in probs.argmax(1)])
     diagnostic = frame["diagnostic"].to_numpy()
-    mapped = np.isin(diagnostic, list(PAD_TO_DERMALENS))
-    truth = np.array([PAD_TO_DERMALENS.get(d, "") for d in diagnostic])
+    mapped = np.isin(diagnostic, list(mapping))
+    truth = np.array([mapping.get(d, "") for d in diagnostic])
 
     per_class = {}
-    for code, name in PAD_TO_DERMALENS.items():
+    for code, name in mapping.items():
         rows = diagnostic == code
         per_class[code] = {
             "dermalens_class": name,
@@ -135,12 +168,12 @@ def summarize(frame: pd.DataFrame, probs: np.ndarray, concern: dict | None = Non
     ece = expected_calibration_error([class_index[t] for t in truth[mapped]], probs[mapped])
 
     flagged = concern_flags(probs, predicted, concern)
-    should_flag = np.isin(diagnostic, list(CONCERNING_TRUTH))
-    scc = diagnostic == UNMAPPED
+    should_flag = np.isin(diagnostic, list(concerning_truth))
+    scc = diagnostic == unmapped
 
     confusion = {
         code: {name: int(((diagnostic == code) & (predicted == name)).sum()) for name in CLASSES}
-        for code in [*PAD_TO_DERMALENS, UNMAPPED]
+        for code in [*mapping, unmapped]
     }
 
     by_skin_type = {}
@@ -160,16 +193,18 @@ def summarize(frame: pd.DataFrame, probs: np.ndarray, concern: dict | None = Non
         }
 
     # 95% intervals, resampling whole patients when the metadata has them.
-    groups = frame["patient_id"].to_numpy() if "patient_id" in frame.columns else np.arange(len(frame))
+    # Resample whole patients if every row has one, else whole lesions (BCN20000 publishes no patient ids).
+    group_column = next((c for c in ("patient_id", "lesion_id") if c in frame.columns and frame[c].notna().all()), None)
+    groups = frame[group_column].to_numpy() if group_column else np.arange(len(frame))
 
     def statistic(rows):
         d, p, t, m = diagnostic[rows], predicted[rows], truth[rows], mapped[rows]
-        recalls = [float((p[d == code] == name).mean()) for code, name in PAD_TO_DERMALENS.items() if (d == code).any()]
-        concerning = np.isin(d, list(CONCERNING_TRUTH))
+        recalls = [float((p[d == code] == name).mean()) for code, name in mapping.items() if (d == code).any()]
+        concerning = np.isin(d, list(concerning_truth))
         flags = flagged[rows]
         return {
             "accuracy": float((p[m] == t[m]).mean()) if m.any() else None,
-            "balanced_accuracy": float(np.mean(recalls)) if len(recalls) == len(PAD_TO_DERMALENS) else None,
+            "balanced_accuracy": float(np.mean(recalls)) if len(recalls) == len(mapping) else None,
             "melanoma_sensitivity": float((p[d == "MEL"] == "mel").mean()) if (d == "MEL").any() else None,
             "concerning_sensitivity": float(flags[concerning].mean()) if concerning.any() else None,
             "concerning_specificity": float((~flags[~concerning]).mean()) if (~concerning).any() else None,
@@ -208,32 +243,41 @@ def main():
     parser.add_argument("--models", default="models/v1,models/v2", help="comma-separated model folders")
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--output", default="models/external/pad_ufes_20.json", type=Path)
+    parser.add_argument("--dataset", choices=sorted(DATASETS), default="pad_ufes_20")
+    parser.add_argument("--predictions", type=Path, default=None, help="also save every image's probabilities per model (CSV)")
     args = parser.parse_args()
 
-    frame = load_metadata(args.metadata, args.images_dir)
-    print(f"PAD-UFES-20: {len(frame)} images, {frame['diagnostic'].value_counts().to_dict()}")
+    spec = DATASETS[args.dataset]
+    frame = load_metadata(args.metadata, args.images_dir, args.dataset)
+    print(f"{spec['name']}: {len(frame)} images, {frame['diagnostic'].value_counts().to_dict()}")
 
     results = {
         "dataset": {
-            "name": "PAD-UFES-20",
-            "citation": "Pacheco AGC et al. PAD-UFES-20: a skin lesion dataset composed of patient data and "
-            "clinical images collected from smartphones. Data in Brief, 2020. doi:10.17632/zr7vgbcyr2.1",
-            "licence": "CC BY 4.0",
+            "name": spec["name"],
+            "citation": spec["citation"],
+            "licence": spec["licence"],
             "images": len(frame),
             "diagnostic_counts": {k: int(v) for k, v in frame["diagnostic"].value_counts().items()},
-            "mapping": PAD_TO_DERMALENS,
+            "mapping": spec["mapping"],
             "note": "Models are applied unchanged; nothing was tuned on this dataset.",
         },
         "models": {},
     }
+    keep = [c for c in ("img_id", "diagnostic", "patient_id", "lesion_id") if c in frame.columns]
+    predictions = frame[keep].copy()
     for folder in [Path(p.strip()) for p in args.models.split(",") if p.strip()]:
         probs, config = run_model(folder, frame, args.images_dir, args.batch_size)
-        summary = summarize(frame, probs, config.get("concern"))
+        summary = summarize(frame, probs, config.get("concern"), args.dataset)
         summary["weights_sha256"] = sha256(folder / "dermalens_efficientnet_b0.pt")
+        for k, name in enumerate(CLASSES):
+            predictions[f"{folder.name}_p_{name}"] = probs[:, k].round(6)
         results["models"][folder.name] = summary
         print(f"{folder.name}: balanced accuracy {summary['balanced_accuracy']:.3f}, "
               f"melanoma sensitivity {summary['melanoma_sensitivity']:.3f}, ECE {summary['expected_calibration_error']:.3f}")
 
+    if args.predictions:
+        args.predictions.parent.mkdir(parents=True, exist_ok=True)
+        predictions.to_csv(args.predictions, index=False)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(results, indent=2, ensure_ascii=False, allow_nan=False))
     print(f"wrote {args.output}")

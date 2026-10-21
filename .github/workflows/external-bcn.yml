@@ -1,0 +1,70 @@
+name: Outside test - BCN20000 dermoscopy (Barcelona)
+
+# Scores published models, unchanged, on BCN20000: 18,946 dermoscopic images
+# from Hospital Clinic Barcelona (ISIC Archive collection 249, CC BY-NC),
+# none of which any DermaLens version trained on. Intervals resample whole
+# lesions. Per-image probabilities are kept so model comparisons can be
+# paired. Nothing is trained or tuned here. Started by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Comma-separated published versions to score"
+        default: "v1,v2,v3"
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - uses: ./.github/actions/fetch-data
+        with:
+          models: ${{ inputs.models }}
+          datasets: none
+
+      - name: Fetch BCN20000 from the ISIC Archive
+        run: python ml/prepare_bcn20000.py --output-dir "$RUNNER_TEMP/bcn"
+
+      - name: Score
+        env:
+          VERSIONS: ${{ inputs.models }}
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          folders=$(echo "$VERSIONS" | tr ',' '\n' | sed 's#^ *#../models/#' | paste -sd, -)
+          (cd ml && python evaluate_external.py --dataset bcn20000 --metadata "$RUNNER_TEMP/bcn/metadata.csv" \
+            --images-dir "$RUNNER_TEMP/bcn/images" --models "$folders" \
+            --output ../results/bcn20000.json --predictions ../results/bcn20000_predictions.csv)
+          cp "$RUNNER_TEMP/bcn/summary.json" results/bcn20000_selection.json
+
+      - name: Summary
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          d = json.load(open("results/bcn20000.json")); sel = json.load(open("results/bcn20000_selection.json"))
+          fmt = lambda v, ci: f"{v:.3f} ({ci[0]:.2f}-{ci[1]:.2f})" if ci else f"{v:.3f}"
+          print(f"## BCN20000 (Barcelona dermoscopy): {sel['kept']} images, {sel['lesions']} lesions\n")
+          print("| Model | Balanced accuracy | Melanoma sensitivity | Concerning flagged | Benign not flagged | ECE |\n|---|---|---|---|---|---|")
+          for v, m in d["models"].items():
+              ci = m["confidence_intervals_95"]; c = m["concerning_lesions"]
+              print(f"| {v} | {fmt(m['balanced_accuracy'], ci.get('balanced_accuracy'))} | "
+                    f"{fmt(m['melanoma_sensitivity'], ci.get('melanoma_sensitivity'))} | "
+                    f"{fmt(c['sensitivity'], ci.get('concerning_sensitivity'))} | "
+                    f"{fmt(c['specificity'], ci.get('concerning_specificity'))} | {m['expected_calibration_error']:.3f} |")
+          EOF
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bcn20000-results
+          path: results/
+          retention-days: 90
