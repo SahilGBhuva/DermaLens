@@ -82,6 +82,8 @@ A short research report in paper format (abstract, methods, results with confide
 
 **v4.1 replaces v2 for dermoscopy only if,** on the HAM10000 test split, the paired 95% interval of balanced accuracy v4.1 − v2 includes 0 or lies above it, **and** its flag catches ≥ 85% of concerning lesions. The same comparison is reported on BCN20000.
 
+**Outcome (2026-10-22).** All four pre-registered criteria met. Dermoscopy: v4.1 adopted. Regular photos: **v3 kept by a safety veto** after a post-hoc melanoma check (v4.1's phone flag caught 5 of 13 melanomas, v3 11 of 13). Rule for all later pre-registrations: per-class sensitivity floors for melanoma, basal cell carcinoma and actinic keratosis / SCC, not only pooled "concerning" sensitivity.
+
 ## Maintenance (held upgrades)
 
 These are planned by hand rather than merged from Dependabot:

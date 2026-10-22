@@ -1,0 +1,486 @@
+{
+  "dataset": {
+    "name": "BCN20000 (Hospital Clinic Barcelona, via the ISIC Archive)",
+    "citation": "Hernandez-Perez C. et al. BCN20000: Dermoscopic lesions in the wild. Scientific Data, 2024. ISIC Archive collection 249.",
+    "licence": "CC BY-NC",
+    "images": 16843,
+    "diagnostic_counts": {
+      "NV": 5647,
+      "MEL": 4003,
+      "BCC": 3676,
+      "BKL": 1551,
+      "AK": 1088,
+      "SCC": 559,
+      "DF": 168,
+      "VASC": 151
+    },
+    "mapping": {
+      "AK": "akiec",
+      "BCC": "bcc",
+      "BKL": "bkl",
+      "DF": "df",
+      "MEL": "mel",
+      "NV": "nv",
+      "VASC": "vasc"
+    },
+    "note": "Models are applied unchanged; nothing was tuned on this dataset."
+  },
+  "models": {
+    "v2": {
+      "confidence_intervals_95": {
+        "accuracy": [
+          0.4761,
+          0.5047
+        ],
+        "balanced_accuracy": [
+          0.4592,
+          0.514
+        ],
+        "melanoma_sensitivity": [
+          0.4663,
+          0.5334
+        ],
+        "concerning_sensitivity": [
+          0.4284,
+          0.4661
+        ],
+        "concerning_specificity": [
+          0.8222,
+          0.8475
+        ]
+      },
+      "images_scored": 16284,
+      "accuracy": 0.48986735445836405,
+      "balanced_accuracy": 0.486405411201389,
+      "melanoma_sensitivity": 0.4981264051961029,
+      "expected_calibration_error": 0.14990267119670317,
+      "per_class": {
+        "AK": {
+          "dermalens_class": "akiec",
+          "images": 1088,
+          "sensitivity": 0.0818014705882353
+        },
+        "BCC": {
+          "dermalens_class": "bcc",
+          "images": 3676,
+          "sensitivity": 0.31964091403699674
+        },
+        "BKL": {
+          "dermalens_class": "bkl",
+          "images": 1551,
+          "sensitivity": 0.4829142488716957
+        },
+        "DF": {
+          "dermalens_class": "df",
+          "images": 168,
+          "sensitivity": 0.7619047619047619
+        },
+        "MEL": {
+          "dermalens_class": "mel",
+          "images": 4003,
+          "sensitivity": 0.4981264051961029
+        },
+        "NV": {
+          "dermalens_class": "nv",
+          "images": 5647,
+          "sensitivity": 0.6644235877457056
+        },
+        "VASC": {
+          "dermalens_class": "vasc",
+          "images": 151,
+          "sensitivity": 0.5960264900662252
+        }
+      },
+      "concerning_lesions": {
+        "description": "Flagged for a closer look when the truth is ACK, BCC, MEL or SCC",
+        "decision_rule": "top class is akiec, bcc or mel",
+        "sensitivity": 0.4472442633497748,
+        "specificity": 0.8346414793135559
+      },
+      "scc_unmapped": {
+        "images": 559,
+        "flagged_as_concerning": 0.33810375670840787
+      },
+      "accuracy_by_fitzpatrick_skin_type": {},
+      "confusion_true_pad_vs_predicted": {
+        "AK": {
+          "akiec": 89,
+          "bcc": 71,
+          "bkl": 517,
+          "df": 206,
+          "mel": 141,
+          "nv": 45,
+          "vasc": 19
+        },
+        "BCC": {
+          "akiec": 183,
+          "bcc": 1175,
+          "bkl": 610,
+          "df": 1011,
+          "mel": 252,
+          "nv": 327,
+          "vasc": 118
+        },
+        "BKL": {
+          "akiec": 39,
+          "bcc": 52,
+          "bkl": 749,
+          "df": 184,
+          "mel": 263,
+          "nv": 218,
+          "vasc": 46
+        },
+        "DF": {
+          "akiec": 4,
+          "bcc": 0,
+          "bkl": 9,
+          "df": 128,
+          "mel": 9,
+          "nv": 13,
+          "vasc": 5
+        },
+        "MEL": {
+          "akiec": 30,
+          "bcc": 47,
+          "bkl": 678,
+          "df": 360,
+          "mel": 1994,
+          "nv": 750,
+          "vasc": 144
+        },
+        "NV": {
+          "akiec": 10,
+          "bcc": 91,
+          "bkl": 411,
+          "df": 405,
+          "mel": 758,
+          "nv": 3752,
+          "vasc": 220
+        },
+        "VASC": {
+          "akiec": 0,
+          "bcc": 7,
+          "bkl": 4,
+          "df": 21,
+          "mel": 10,
+          "nv": 19,
+          "vasc": 90
+        },
+        "SCC": {
+          "akiec": 65,
+          "bcc": 72,
+          "bkl": 148,
+          "df": 197,
+          "mel": 52,
+          "nv": 18,
+          "vasc": 7
+        }
+      },
+      "weights_sha256": "a9033a0c6d56c5af967ed828d4e6525eb558fce069342f7d3460a959290f720e"
+    },
+    "v3": {
+      "confidence_intervals_95": {
+        "accuracy": [
+          0.4397,
+          0.466
+        ],
+        "balanced_accuracy": [
+          0.4405,
+          0.4971
+        ],
+        "melanoma_sensitivity": [
+          0.5362,
+          0.5995
+        ],
+        "concerning_sensitivity": [
+          0.5562,
+          0.591
+        ],
+        "concerning_specificity": [
+          0.6485,
+          0.6799
+        ]
+      },
+      "images_scored": 16284,
+      "accuracy": 0.45314419061655614,
+      "balanced_accuracy": 0.4681531475091917,
+      "melanoma_sensitivity": 0.5658256307769173,
+      "expected_calibration_error": 0.18228140414526145,
+      "per_class": {
+        "AK": {
+          "dermalens_class": "akiec",
+          "images": 1088,
+          "sensitivity": 0.20220588235294118
+        },
+        "BCC": {
+          "dermalens_class": "bcc",
+          "images": 3676,
+          "sensitivity": 0.3784004352557127
+        },
+        "BKL": {
+          "dermalens_class": "bkl",
+          "images": 1551,
+          "sensitivity": 0.5641521598968408
+        },
+        "DF": {
+          "dermalens_class": "df",
+          "images": 168,
+          "sensitivity": 0.6964285714285714
+        },
+        "MEL": {
+          "dermalens_class": "mel",
+          "images": 4003,
+          "sensitivity": 0.5658256307769173
+        },
+        "NV": {
+          "dermalens_class": "nv",
+          "images": 5647,
+          "sensitivity": 0.4329732601381264
+        },
+        "VASC": {
+          "dermalens_class": "vasc",
+          "images": 151,
+          "sensitivity": 0.4370860927152318
+        }
+      },
+      "concerning_lesions": {
+        "description": "Flagged for a closer look when the truth is ACK, BCC, MEL or SCC",
+        "decision_rule": "top class is akiec, bcc or mel",
+        "sensitivity": 0.5734505683036671,
+        "specificity": 0.6650259411999467
+      },
+      "scc_unmapped": {
+        "images": 559,
+        "flagged_as_concerning": 0.5152057245080501
+      },
+      "accuracy_by_fitzpatrick_skin_type": {},
+      "confusion_true_pad_vs_predicted": {
+        "AK": {
+          "akiec": 220,
+          "bcc": 82,
+          "bkl": 428,
+          "df": 157,
+          "mel": 179,
+          "nv": 22,
+          "vasc": 0
+        },
+        "BCC": {
+          "akiec": 326,
+          "bcc": 1391,
+          "bkl": 624,
+          "df": 667,
+          "mel": 441,
+          "nv": 215,
+          "vasc": 12
+        },
+        "BKL": {
+          "akiec": 82,
+          "bcc": 72,
+          "bkl": 875,
+          "df": 110,
+          "mel": 313,
+          "nv": 97,
+          "vasc": 2
+        },
+        "DF": {
+          "akiec": 12,
+          "bcc": 2,
+          "bkl": 21,
+          "df": 117,
+          "mel": 11,
+          "nv": 4,
+          "vasc": 1
+        },
+        "MEL": {
+          "akiec": 53,
+          "bcc": 103,
+          "bkl": 1023,
+          "df": 193,
+          "mel": 2265,
+          "nv": 358,
+          "vasc": 8
+        },
+        "NV": {
+          "akiec": 58,
+          "bcc": 96,
+          "bkl": 995,
+          "df": 202,
+          "mel": 1831,
+          "nv": 2445,
+          "vasc": 20
+        },
+        "VASC": {
+          "akiec": 1,
+          "bcc": 17,
+          "bkl": 13,
+          "df": 23,
+          "mel": 23,
+          "nv": 8,
+          "vasc": 66
+        },
+        "SCC": {
+          "akiec": 115,
+          "bcc": 96,
+          "bkl": 113,
+          "df": 145,
+          "mel": 77,
+          "nv": 12,
+          "vasc": 1
+        }
+      },
+      "weights_sha256": "e0cf8e628dd81a5780e0bc5338c56908de47beec2a877fbbab02d0782fe8ecb2"
+    },
+    "v4.1": {
+      "confidence_intervals_95": {
+        "accuracy": [
+          0.517,
+          0.5444
+        ],
+        "balanced_accuracy": [
+          0.4175,
+          0.4754
+        ],
+        "melanoma_sensitivity": [
+          0.3088,
+          0.3685
+        ],
+        "concerning_sensitivity": [
+          0.7244,
+          0.7544
+        ],
+        "concerning_specificity": [
+          0.6437,
+          0.6786
+        ]
+      },
+      "images_scored": 16284,
+      "accuracy": 0.5303365266519283,
+      "balanced_accuracy": 0.4452300525881903,
+      "melanoma_sensitivity": 0.3362478141393955,
+      "expected_calibration_error": 0.17678081771224788,
+      "per_class": {
+        "AK": {
+          "dermalens_class": "akiec",
+          "images": 1088,
+          "sensitivity": 0.265625
+        },
+        "BCC": {
+          "dermalens_class": "bcc",
+          "images": 3676,
+          "sensitivity": 0.4129488574537541
+        },
+        "BKL": {
+          "dermalens_class": "bkl",
+          "images": 1551,
+          "sensitivity": 0.524822695035461
+        },
+        "DF": {
+          "dermalens_class": "df",
+          "images": 168,
+          "sensitivity": 0.32142857142857145
+        },
+        "MEL": {
+          "dermalens_class": "mel",
+          "images": 4003,
+          "sensitivity": 0.3362478141393955
+        },
+        "NV": {
+          "dermalens_class": "nv",
+          "images": 5647,
+          "sensitivity": 0.8052063042323357
+        },
+        "VASC": {
+          "dermalens_class": "vasc",
+          "images": 151,
+          "sensitivity": 0.4503311258278146
+        }
+      },
+      "concerning_lesions": {
+        "description": "Flagged for a closer look when the truth is ACK, BCC, MEL or SCC",
+        "decision_rule": "P(akiec + bcc + mel) >= 0.148172",
+        "sensitivity": 0.7392236757452284,
+        "specificity": 0.6614340827457762
+      },
+      "scc_unmapped": {
+        "images": 559,
+        "flagged_as_concerning": 0.8067978533094812
+      },
+      "accuracy_by_fitzpatrick_skin_type": {},
+      "confusion_true_pad_vs_predicted": {
+        "AK": {
+          "akiec": 289,
+          "bcc": 100,
+          "bkl": 408,
+          "df": 52,
+          "mel": 75,
+          "nv": 164,
+          "vasc": 0
+        },
+        "BCC": {
+          "akiec": 455,
+          "bcc": 1518,
+          "bkl": 562,
+          "df": 223,
+          "mel": 136,
+          "nv": 763,
+          "vasc": 19
+        },
+        "BKL": {
+          "akiec": 135,
+          "bcc": 75,
+          "bkl": 814,
+          "df": 30,
+          "mel": 138,
+          "nv": 356,
+          "vasc": 3
+        },
+        "DF": {
+          "akiec": 19,
+          "bcc": 5,
+          "bkl": 19,
+          "df": 54,
+          "mel": 5,
+          "nv": 66,
+          "vasc": 0
+        },
+        "MEL": {
+          "akiec": 94,
+          "bcc": 159,
+          "bkl": 1008,
+          "df": 63,
+          "mel": 1346,
+          "nv": 1318,
+          "vasc": 15
+        },
+        "NV": {
+          "akiec": 58,
+          "bcc": 78,
+          "bkl": 542,
+          "df": 51,
+          "mel": 348,
+          "nv": 4547,
+          "vasc": 23
+        },
+        "VASC": {
+          "akiec": 2,
+          "bcc": 20,
+          "bkl": 3,
+          "df": 4,
+          "mel": 5,
+          "nv": 49,
+          "vasc": 68
+        },
+        "SCC": {
+          "akiec": 172,
+          "bcc": 97,
+          "bkl": 134,
+          "df": 72,
+          "mel": 28,
+          "nv": 55,
+          "vasc": 1
+        }
+      },
+      "weights_sha256": "9cb2ad86da1d4bdbe0a6524e887ff2365bbcf00f26479603fcfa1e37ef36b38d"
+    }
+  }
+}

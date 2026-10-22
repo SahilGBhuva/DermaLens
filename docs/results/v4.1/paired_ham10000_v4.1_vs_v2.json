@@ -1,0 +1,22 @@
+{
+  "a": "v2_ham10000_test_predictions.csv",
+  "b": "v4.1_ham10000_test_predictions.csv",
+  "images": 1494,
+  "groups": 1121,
+  "balanced_accuracy": {
+    "difference_b_minus_a": -0.03842020945885327,
+    "interval_95": [
+      -0.0729,
+      0.013
+    ],
+    "verdict": "no detectable difference"
+  },
+  "melanoma_sensitivity": {
+    "difference_b_minus_a": -0.13903743315508021,
+    "interval_95": [
+      -0.2061,
+      -0.0769
+    ],
+    "verdict": "B worse"
+  }
+}

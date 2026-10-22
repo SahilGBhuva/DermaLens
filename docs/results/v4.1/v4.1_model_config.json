@@ -1,0 +1,131 @@
+{
+  "arch": "efficientnet_b0",
+  "classes": [
+    "akiec",
+    "bcc",
+    "bkl",
+    "df",
+    "mel",
+    "nv",
+    "vasc"
+  ],
+  "image_size": 224,
+  "mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "tta": true,
+  "temperature": 0.9,
+  "logit_bias": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "concern": {
+    "classes": [
+      "akiec",
+      "bcc",
+      "mel"
+    ],
+    "threshold": 0.148172,
+    "thresholds": {
+      "dermoscopy": 0.148172,
+      "phone": 0.881879
+    },
+    "target_sensitivity": 0.9
+  },
+  "weights_sha256": "9cb2ad86da1d4bdbe0a6524e887ff2365bbcf00f26479603fcfa1e37ef36b38d",
+  "validation": {
+    "images": 1960,
+    "nll_before": 0.5769506096839905,
+    "nll_after": 0.5702013969421387,
+    "domains": {
+      "dermoscopy": {
+        "balanced_accuracy": 0.7312427174531232,
+        "expected_calibration_error": 0.031483348279975634,
+        "concern_flag": {
+          "images": 1519,
+          "concerning": 278,
+          "sensitivity": 0.9028776978417267,
+          "specificity": 0.7969379532634971
+        },
+        "concern_flag_own_threshold": {
+          "images": 1519,
+          "concerning": 278,
+          "sensitivity": 0.9028776978417267,
+          "specificity": 0.7969379532634971
+        }
+      },
+      "phone": {
+        "balanced_accuracy": 0.6435970712234302,
+        "expected_calibration_error": 0.04557254856405887,
+        "concern_flag": {
+          "images": 441,
+          "concerning": 350,
+          "sensitivity": 0.9971428571428571,
+          "specificity": 0.38461538461538464
+        },
+        "concern_flag_own_threshold": {
+          "images": 441,
+          "concerning": 350,
+          "sensitivity": 0.9,
+          "specificity": 0.9340659340659341
+        }
+      }
+    }
+  },
+  "version": "v4.1",
+  "recipe": "v2 fine-tuned on PAD-UFES-20 train + HAM10000 replay (15 epochs max, 5000 replay); decisions: concern; v4.1: one flag threshold per photo type",
+  "training_data": {
+    "phone_photos": 1397,
+    "dermoscopy_replay": 5001,
+    "pad_split_summary": {
+      "train": {
+        "images": 1397,
+        "patients": 823,
+        "diagnostic_counts": {
+          "BCC": 501,
+          "ACK": 451,
+          "NEV": 151,
+          "SEK": 144,
+          "SCC": 120,
+          "MEL": 30
+        }
+      },
+      "val": {
+        "images": 441,
+        "patients": 277,
+        "diagnostic_counts": {
+          "BCC": 171,
+          "ACK": 135,
+          "NEV": 48,
+          "SEK": 43,
+          "SCC": 35,
+          "MEL": 9
+        }
+      },
+      "test": {
+        "images": 460,
+        "patients": 273,
+        "diagnostic_counts": {
+          "BCC": 173,
+          "ACK": 144,
+          "SEK": 48,
+          "NEV": 45,
+          "SCC": 37,
+          "MEL": 13
+        }
+      }
+    }
+  }
+}

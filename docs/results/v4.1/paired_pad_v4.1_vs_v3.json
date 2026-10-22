@@ -1,0 +1,22 @@
+{
+  "a": "pad_ufes_20_test_patients_predictions.csv v3_",
+  "b": "pad_ufes_20_test_patients_predictions.csv v4.1_",
+  "images": 423,
+  "groups": 260,
+  "balanced_accuracy": {
+    "difference_b_minus_a": 0.08416666666666661,
+    "interval_95": [
+      0.0233,
+      0.1513
+    ],
+    "verdict": "B better"
+  },
+  "melanoma_sensitivity": {
+    "difference_b_minus_a": 0.0,
+    "interval_95": [
+      -0.2,
+      0.2668
+    ],
+    "verdict": "no detectable difference"
+  }
+}
