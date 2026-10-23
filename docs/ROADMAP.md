@@ -84,6 +84,19 @@ A short research report in paper format (abstract, methods, results with confide
 
 **Outcome (2026-10-22).** All four pre-registered criteria met. Dermoscopy: v4.1 adopted. Regular photos: **v3 kept by a safety veto** after a post-hoc melanoma check (v4.1's phone flag caught 5 of 13 melanomas, v3 11 of 13). Rule for all later pre-registrations: per-class sensitivity floors for melanoma, basal cell carcinoma and actinic keratosis / SCC, not only pooled "concerning" sensitivity.
 
+## v4.2 pre-registration (written 2026-10-22, before any v4.2 result)
+
+**Change, and only this change:** v4's weights and temperature; the flag becomes **per class and per photo type**: a lesion is sent for a closer look if P(mel), P(bcc) or P(akiec) reaches its own threshold, each the highest that keeps ≥ 90% sensitivity *for that class* on that photo type's validation split. No retraining.
+
+**v4.2 replaces v3 for regular photos only if,** on the PAD-UFES-20 test patients:
+1. it sends at least as many melanomas for a closer look as v3 names (v3: 11 of 13),
+2. it flags ≥ 85% of basal cell carcinomas and ≥ 85% of actinic keratoses + SCC, and
+3. it leaves more benign lesions unflagged than v3 (65.6%).
+
+**v4.2 replaces v4.1 for dermoscopy only if,** on the HAM10000 test split, it flags ≥ 85% of melanomas, of basal cell carcinomas and of actinic keratoses (each), and leaves at least as many benign lesions unflagged as v4.1 (81.2%) minus 3 points. BCN20000 is reported the same way, not gated.
+
+Small samples (13 phone melanomas) are reported with intervals; a gate on a count is met or not met as written.
+
 ## Maintenance (held upgrades)
 
 These are planned by hand rather than merged from Dependabot:
