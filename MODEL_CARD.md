@@ -307,6 +307,21 @@ Also reported, as pre-registered: paired balanced accuracy on BCN20000 v4.1 − 
 - **Regular photos: v3 stays, overriding the pre-registered criteria.** v4.1 met them by catching the many basal cell carcinomas and actinic keratoses in the phone test set, while its phone threshold sent only 5 of 13 melanomas for a closer look, against 11 of 13 for v3. The sample is small (interval 11–64%), but the risk is one-sided. This is a deviation from the pre-registration, made for safety and recorded here.
 - **Lesson for every future pre-registration:** gate on each malignant class separately (melanoma, basal cell carcinoma, actinic keratosis / SCC), not only on "concerning lesions" pooled.
 
+## v4.2: pre-registered result (2026-10-23): failed
+
+v4.2 = v4's weights with a threshold **per concerning class and photo type** (a lesion is flagged if P(mel), P(bcc) or P(akiec) reaches its own threshold, each keeping ≥ 90% of that class on validation). Run 39912394996; files in [`docs/results/v4.2/`](docs/results/v4.2/).
+
+| | Phone (PAD-UFES-20) | Dermoscopy (HAM10000) | Dermoscopy (BCN20000, reported) |
+|---|---|---|---|
+| Melanomas flagged | **13/13** (gate: ≥ 11/13, met) | 0.941 (0.89–0.98) | 0.935 |
+| Basal cell carcinomas flagged | 1.000 | 0.985 | 0.986 |
+| Actinic keratoses (+ SCC) flagged | 1.000 / 0.973 | 0.984 | 0.990 / 0.987 |
+| Benign left unflagged | **0.301** (gate: > 0.656, **failed**) | **0.468** (gate: ≥ 0.782, **failed**) | 0.243 |
+
+**Verdict:** fails on both photo types. Requiring each of three classes to keep 90% sensitivity, and flagging when *any* fires, piles up false alarms: on phone photos 70% of benign lesions would be sent for a closer look.
+
+**What v4 → v4.2 shows together.** With these weights, moving thresholds only slides along one trade-off curve: v4.1 (pooled, per photo type) gives few false alarms but misses phone melanomas; v4.2 (per class) catches every cancer but flags most benign lesions; v3's top-class rule sits between. No threshold choice met both goals, so the next gain has to come from the model itself (more varied training data, especially phone photos and other hospitals), not from decision rules. **Serving is unchanged by v4.2:** v3 for regular photos; v4.1 for dermoscopy once approved, otherwise v2.
+
 ## Not clinically ready
 
 DermaLens is a research and education project. Before any clinical use it would still need, at minimum: external validation on independent datasets and devices, review by dermatologists, prospective testing, evaluation across skin tones, privacy and security work, and regulatory review. None of these has been done.

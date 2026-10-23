@@ -97,6 +97,8 @@ A short research report in paper format (abstract, methods, results with confide
 
 Small samples (13 phone melanomas) are reported with intervals; a gate on a count is met or not met as written.
 
+**Outcome (2026-10-23).** Failed: melanoma gate met (13/13 on phone), but benign left unflagged fell to 30.1% (phone) and 46.8% (dermoscopy). Thresholds alone cannot reach both goals with v4's weights; the next step is a better model (more varied training data), pre-registered with per-class gates.
+
 ## Maintenance (held upgrades)
 
 These are planned by hand rather than merged from Dependabot:
