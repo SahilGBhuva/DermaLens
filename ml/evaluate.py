@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 
 from dataset import SkinLesionDataset
 from metrics import grouped_bootstrap, summarize_metrics
-from model import CLASSES, apply_calibration, build_model, eval_transform, load_config, pick_device, predict_proba, sha256
+from model import CLASSES, apply_calibration, concern_flags_for, describe_concern_rule, build_model, eval_transform, load_config, pick_device, predict_proba, sha256
 
 
 def main():
@@ -67,11 +67,15 @@ def main():
     if concern:  # v4+: the separate "needs a closer look" decision
         y = np.asarray(all_y)
         index = [CLASSES.index(name) for name in concern["classes"]]
-        threshold = concern.get("thresholds", {}).get(args.decision_domain, concern["threshold"])
-        flags = probabilities[:, index].sum(axis=1) >= threshold
+        flags = concern_flags_for(probabilities, concern, args.decision_domain)
         truth = np.isin(y, index)
+        group_ids = groups if groups is not None else np.arange(len(y))
+
+        def flag_rate(mask):
+            return lambda rows: {"rate": flags[rows][mask[rows]].mean() if mask[rows].any() else None}
+
         metrics["concern_flag"] = {
-            "rule": f"P({' + '.join(concern['classes'])}) >= {threshold}",
+            "rule": describe_concern_rule(concern, args.decision_domain),
             "sensitivity": float(flags[truth].mean()) if truth.any() else None,
             "specificity": float((~flags[~truth]).mean()) if (~truth).any() else None,
             "confidence_intervals_95": grouped_bootstrap(
@@ -79,8 +83,17 @@ def main():
                     "sensitivity": flags[rows][truth[rows]].mean() if truth[rows].any() else None,
                     "specificity": (~flags[rows][~truth[rows]]).mean() if (~truth[rows]).any() else None,
                 },
-                groups if groups is not None else np.arange(len(y)),
+                group_ids,
             ),
+            # Each malignant class separately (pre-registration rule since v4.2).
+            "flagged_by_class": {
+                name: {
+                    "images": int((y == CLASSES.index(name)).sum()),
+                    "flagged": float(flags[y == CLASSES.index(name)].mean()) if (y == CLASSES.index(name)).any() else None,
+                    "interval_95": grouped_bootstrap(flag_rate(y == CLASSES.index(name)), group_ids).get("rate"),
+                }
+                for name in concern["classes"]
+            },
         }
     if args.predictions:
         keep = [c for c in ("image_id", "img_id", "lesion_id", "patient_id", "label") if c in frame.columns]

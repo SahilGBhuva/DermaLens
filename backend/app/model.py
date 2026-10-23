@@ -146,9 +146,14 @@ class DermaLensModel:
         concern = self.config.get("concern")
         if concern:
             concern_score = float(sum(p[CLASSES.index(name)].item() for name in concern["classes"]))
-            # v4.1+: one threshold per photo type; otherwise the shared one.
-            threshold = concern.get("thresholds", {}).get(domain or "", concern["threshold"])
-            needs_closer_look = concern_score >= float(threshold)
+            # Mirrors ml/model.py concern_flags_for: per class and photo type (v4.2),
+            # else per photo type (v4.1), else the shared threshold (v4).
+            per_class = (concern.get("class_thresholds") or {}).get(domain or "")
+            if per_class:
+                needs_closer_look = any(p[CLASSES.index(c)].item() >= float(t) for c, t in per_class.items())
+            else:
+                threshold = (concern.get("thresholds") or {}).get(domain or "", concern["threshold"])
+                needs_closer_look = concern_score >= float(threshold)
 
         return {
             "x": x,

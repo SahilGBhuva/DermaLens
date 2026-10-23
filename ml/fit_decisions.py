@@ -28,7 +28,7 @@ from torch.utils.data import DataLoader
 from calibrate import collect_probs, fit_temperature, nll
 from dataset import SkinLesionDataset
 from metrics import expected_calibration_error
-from model import CLASSES, apply_calibration, build_model, eval_transform, load_config, pick_device, sha256
+from model import CLASSES, apply_calibration, build_model, concern_flags_for, eval_transform, load_config, pick_device, sha256
 
 CONCERN_CLASSES = ["akiec", "bcc", "mel"]
 CONCERN_INDEX = [CLASSES.index(name) for name in CONCERN_CLASSES]
@@ -70,6 +70,12 @@ def main():
     parser.add_argument("--target-sensitivity", type=float, default=0.90)
     parser.add_argument("--tta", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument(
+        "--per-class",
+        action="store_true",
+        help="v4.2: one threshold per concerning class and photo type, each keeping the target "
+        "sensitivity for that class (a rare class such as melanoma cannot be outvoted)",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -94,6 +100,14 @@ def main():
     # v4.1: also one threshold per domain (validation file name, e.g. "dermoscopy",
     # "phone"); the API uses the one for the photo type the visitor chose.
     per_domain = {name: choose_threshold({name: d}, args.target_sensitivity) for name, d in domains.items()}
+    class_thresholds = {}
+    if args.per_class:
+        for name, (y, p) in calibrated.items():
+            class_thresholds[name] = {
+                c: round(choose_threshold({c: (p[:, CLASSES.index(c)], y == CLASSES.index(c))}, args.target_sensitivity), 6)
+                for c in CONCERN_CLASSES
+                if (y == CLASSES.index(c)).any()
+            }
 
     validation = {}
     for name, (y, p) in calibrated.items():
@@ -103,6 +117,14 @@ def main():
             "concern_flag": flag_stats(*domains[name], threshold),
             "concern_flag_own_threshold": flag_stats(*domains[name], per_domain[name]),
         }
+        if args.per_class:
+            flags = concern_flags_for(p, {"classes": CONCERN_CLASSES, "threshold": 1.0, "class_thresholds": class_thresholds}, name)
+            truth = np.isin(y, CONCERN_INDEX)
+            validation[name]["concern_flag_per_class"] = {
+                "sensitivity": float(flags[truth].mean()) if truth.any() else None,
+                "specificity": float((~flags[~truth]).mean()) if (~truth).any() else None,
+                "flagged_by_class": {c: float(flags[y == CLASSES.index(c)].mean()) for c in class_thresholds[name]},
+            }
 
     config.update(
         {
@@ -113,6 +135,7 @@ def main():
                 "classes": CONCERN_CLASSES,
                 "threshold": round(threshold, 6),
                 "thresholds": {name: round(t, 6) for name, t in per_domain.items()},
+                **({"class_thresholds": class_thresholds} if args.per_class else {}),
                 "target_sensitivity": args.target_sensitivity,
             },
             "weights_sha256": sha256(args.weights),

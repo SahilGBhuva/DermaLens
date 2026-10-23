@@ -228,3 +228,36 @@ def test_concern_flag_uses_the_threshold_for_the_photo_type(tmp_path, monkeypatc
     files = {"file": ("lesion.png", make_png(), "image/png")}
     assert client.post("/predict?model=v4", files=files).json()["needs_closer_look"] is True
     assert client.post("/predict?model=v4&image_type=photo", files=files).json()["needs_closer_look"] is False
+
+
+def test_per_class_flag_matches_the_ml_rule(tmp_path, monkeypatch):
+    import json
+    import sys
+    from pathlib import Path
+
+    from app import main
+    from app.registry import ModelRegistry
+    from conftest import make_version
+
+    make_version(tmp_path / "v4", seed=4)
+    config_path = tmp_path / "v4" / "model_config.json"
+    config = json.loads(config_path.read_text())
+    config["concern"] = {"classes": ["akiec", "bcc", "mel"], "threshold": 1.01, "target_sensitivity": 0.9,
+                         "class_thresholds": {"dermoscopy": {"mel": 0.0, "bcc": 1.01, "akiec": 1.01},
+                                              "phone": {"mel": 1.01, "bcc": 1.01, "akiec": 1.01}}}
+    config_path.write_text(json.dumps(config))
+    monkeypatch.setattr(main, "registry", ModelRegistry(tmp_path, default="v4"))
+    monkeypatch.setattr(main, "PHOTO_MODEL", "v4")
+    files = {"file": ("lesion.png", make_png(), "image/png")}
+    derm = client.post("/predict?model=v4", files=files).json()
+    phone = client.post("/predict?model=v4&image_type=photo", files=files).json()
+    assert derm["needs_closer_look"] is True and phone["needs_closer_look"] is False
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ml"))
+    try:
+        from model import CLASSES as ML_CLASSES, concern_flags_for
+    finally:
+        sys.path.pop(0)
+    probs = [[derm["probabilities"][c] for c in ML_CLASSES]]
+    assert bool(concern_flags_for(probs, config["concern"], "dermoscopy")[0]) is derm["needs_closer_look"]
+    assert bool(concern_flags_for(probs, config["concern"], "phone")[0]) is phone["needs_closer_look"]

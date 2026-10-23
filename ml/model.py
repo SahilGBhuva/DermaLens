@@ -88,3 +88,31 @@ def load_config(path) -> dict:
     if path and Path(path).exists():
         config.update(json.loads(Path(path).read_text()))
     return config
+
+
+def concern_flags_for(probs, concern: dict, domain: str | None = None):
+    """The "needs a closer look" decision for each row of calibrated probabilities.
+
+    Three forms, newest first (the API mirrors this in backend/app/model.py):
+    - per class and photo type (v4.2): any of P(c) >= class_thresholds[domain][c]
+    - per photo type (v4.1): P(akiec) + P(bcc) + P(mel) >= thresholds[domain]
+    - shared (v4): the same sum >= threshold
+    """
+    import numpy as np
+
+    probs = np.asarray(probs)
+    per_class = (concern.get("class_thresholds") or {}).get(domain or "")
+    if per_class:
+        return np.any([probs[:, CLASSES.index(c)] >= t for c, t in per_class.items()], axis=0)
+    index = [CLASSES.index(c) for c in concern["classes"]]
+    threshold = (concern.get("thresholds") or {}).get(domain or "", concern["threshold"])
+    return probs[:, index].sum(axis=1) >= threshold
+
+
+def describe_concern_rule(concern: dict, domain: str | None = None) -> str:
+    per_class = (concern.get("class_thresholds") or {}).get(domain or "")
+    if per_class:
+        return " or ".join(f"P({c}) >= {t}" for c, t in per_class.items())
+    threshold = (concern.get("thresholds") or {}).get(domain or "", concern["threshold"])
+    return f"P({' + '.join(concern['classes'])}) >= {threshold}"
+

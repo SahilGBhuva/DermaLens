@@ -33,7 +33,7 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 
 from metrics import expected_calibration_error, grouped_bootstrap
-from model import CLASSES, apply_calibration, build_model, eval_transform, load_config, pick_device, predict_proba, sha256
+from model import CLASSES, apply_calibration, concern_flags_for, describe_concern_rule, build_model, eval_transform, load_config, pick_device, predict_proba, sha256
 
 # PAD-UFES-20 diagnostic code -> DermaLens class.
 PAD_TO_DERMALENS = {
@@ -147,8 +147,7 @@ def concern_flags(probs: np.ndarray, predicted: np.ndarray, concern: dict | None
     earlier versions flag when the top class is one of those classes.
     """
     if concern:
-        index = [CLASSES.index(name) for name in concern["classes"]]
-        return probs[:, index].sum(axis=1) >= concern_threshold(concern, domain)
+        return concern_flags_for(probs, concern, domain)
     return np.isin(predicted, list(CONCERNING))
 
 
@@ -228,11 +227,24 @@ def summarize(frame: pd.DataFrame, probs: np.ndarray, concern: dict | None = Non
         "concerning_lesions": {
             "description": "Flagged for a closer look when the truth is ACK, BCC, MEL or SCC",
             "decision_rule": (
-                f"P({' + '.join(concern['classes'])}) >= {concern_threshold(concern, spec.get('decision_domain'))}" if concern
+                describe_concern_rule(concern, spec.get("decision_domain")) if concern
                 else "top class is akiec, bcc or mel"
             ),
             "sensitivity": float(flagged[should_flag].mean()) if should_flag.any() else None,
             "specificity": float((~flagged[~should_flag]).mean()) if (~should_flag).any() else None,
+        },
+        # Each true code separately (pre-registration rule since v4.2).
+        "flagged_by_code": {
+            code: {
+                "images": int((diagnostic == code).sum()),
+                "flagged": float(flagged[diagnostic == code].mean()),
+                "interval_95": grouped_bootstrap(
+                    lambda rows, c=code: {"rate": flagged[rows][diagnostic[rows] == c].mean() if (diagnostic[rows] == c).any() else None},
+                    groups,
+                ).get("rate"),
+            }
+            for code in sorted(concerning_truth)
+            if (diagnostic == code).any()
         },
         "scc_unmapped": {
             "images": int(scc.sum()),

@@ -51,3 +51,18 @@ def test_external_summary_uses_the_datasets_own_domain_threshold():
     # PAD-UFES-20 is phone photos: threshold 0.3, so this benign mole is not flagged.
     assert summarize(frame, probs, concern)["concerning_lesions"]["specificity"] == 1.0
     assert summarize(frame, probs, {**concern, "thresholds": {}})["concerning_lesions"]["specificity"] == 0.0
+
+
+def test_per_class_rule_flags_a_rare_class_the_pooled_rule_misses():
+    from model import concern_flags_for
+
+    probs = np.zeros((2, len(CLASSES)))
+    # A melanoma with modest P(mel) and little else concerning; a mole.
+    probs[0, CLASSES.index("nv")], probs[0, CLASSES.index("mel")] = 0.75, 0.25
+    probs[1, CLASSES.index("nv")], probs[1, CLASSES.index("mel")] = 0.95, 0.05
+    pooled = {"classes": ["akiec", "bcc", "mel"], "threshold": 0.3, "thresholds": {"phone": 0.3}}
+    per_class = {**pooled, "class_thresholds": {"phone": {"mel": 0.2, "bcc": 0.5, "akiec": 0.5}}}
+    assert concern_flags_for(probs, pooled, "phone").tolist() == [False, False]
+    assert concern_flags_for(probs, per_class, "phone").tolist() == [True, False]
+    # Another photo type without per-class thresholds falls back to the pooled rule.
+    assert concern_flags_for(probs, per_class, "dermoscopy").tolist() == [False, False]
