@@ -99,6 +99,28 @@ Small samples (13 phone melanomas) are reported with intervals; a gate on a coun
 
 **Outcome (2026-10-23).** Failed: melanoma gate met (13/13 on phone), but benign left unflagged fell to 30.1% (phone) and 46.8% (dermoscopy). Thresholds alone cannot reach both goals with v4's weights; the next step is a better model (more varied training data), pre-registered with per-class gates.
 
+## v5 pre-registration (written 2026-11-03, before any v5 result)
+
+**Why.** v4 → v4.2 showed that, with v4's weights, decision rules only slide along one trade-off curve. The next gain has to come from the model, and the most plausible missing ingredient is a second hospital's images in training.
+
+**Change, and only this change:** the v4 recipe (v2 weights fine-tuned on PAD-UFES-20 train + a 5,000-image HAM10000 replay, temperature-only probabilities, one pooled flag threshold per photo type from `ml/fit_decisions.py`) plus a **lesion-grouped part of BCN20000**: its train lesions join the training mix, its validation lesions join the dermoscopy validation set (`ml/split_bcn20000.py`, fixed seed, no lesion in two splits, invasive SCC kept only in the test part). Workflow: `.github/workflows/train-v5.yml`.
+
+**Stated cost.** BCN20000 stops being an outside test for v5. Its held-out lesions are reported, but they come from the same hospital as the training lesions, so they show whether the model learned that hospital, not whether it generalises to a third one. HAM10000 test and the PAD-UFES-20 test patients stay untouched. Finding a third, unseen dermoscopy source stays an open item.
+
+**v5 replaces v3 for regular photos only if,** on the PAD-UFES-20 test patients (the v4.2 gates, unchanged):
+1. it sends at least as many melanomas for a closer look as v3 (11 of 13),
+2. it flags ≥ 85% of basal cell carcinomas and ≥ 85% of actinic keratoses + SCC, and
+3. it leaves more benign lesions unflagged than v3 (65.6%).
+
+**v5 replaces v4.1 (or v2 until v4.1 is approved) for dermoscopy only if,** on the HAM10000 test split:
+1. it flags ≥ 85% of melanomas, of basal cell carcinomas and of actinic keratoses (each),
+2. it leaves at least 78.2% of benign lesions unflagged (v4.1's 81.2% minus 3 points), and
+3. the paired 95% interval of balanced accuracy v5 − v2 includes 0 or lies above it.
+
+**Reported, and gated only as follows:** on the BCN20000 held-out lesions, the paired interval of balanced accuracy v5 − v2 must lie above 0, otherwise the change did not do what it was for. Flag rates per class are reported there without a gate.
+
+Otherwise the earlier models stay. Every number is reported either way. Small samples (13 phone melanomas) are reported with intervals; a gate on a count is met or not met as written.
+
 ## Maintenance (held upgrades)
 
 These are planned by hand rather than merged from Dependabot:

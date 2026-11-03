@@ -52,6 +52,12 @@ def main():
         help="bias: v3's per-class offsets (ml/calibrate.py); concern: v4's temperature-only "
         "probabilities plus a separate 'needs a closer look' threshold (ml/fit_decisions.py)",
     )
+    parser.add_argument(
+        "--bcn-splits",
+        default=None,
+        help="folder from ml/split_bcn20000.py (v5): its train lesions join the training mix and its val "
+        "lesions join the dermoscopy validation set; its test lesions are NOT read here",
+    )
     parser.add_argument("--target-sensitivity", type=float, default=0.90, help="concern flag floor, per domain")
     args = parser.parse_args()
 
@@ -72,12 +78,25 @@ def main():
     fraction = min(1.0, args.ham_replay / len(ham_train))
     replay = ham_train.groupby("label").sample(frac=fraction, random_state=42)
     pad_train = pd.read_csv(pad / "train.csv")
-    mixed = pd.concat([pad_train[["image_path", "label"]], replay[["image_path", "label"]]], ignore_index=True)
+    parts = [pad_train[["image_path", "label"]], replay[["image_path", "label"]]]
+    bcn_train = bcn_val = None
+    if args.bcn_splits:
+        bcn_train = pd.read_csv(Path(args.bcn_splits) / "train.csv")
+        bcn_val = pd.read_csv(Path(args.bcn_splits) / "val.csv")
+        parts.append(bcn_train[["image_path", "label"]])
+    mixed = pd.concat(parts, ignore_index=True)
     mixed.to_csv(work / "train_mixed.csv", index=False)
-    print(f"training mix: {len(pad_train)} phone photos + {len(replay)} dermoscopy images", flush=True)
+    print(
+        f"training mix: {len(pad_train)} phone photos + {len(replay)} HAM10000 + "
+        f"{0 if bcn_train is None else len(bcn_train)} BCN20000 dermoscopy images",
+        flush=True,
+    )
 
     # Name the validation files by domain; train.py labels history columns by file name.
-    pd.read_csv(ham / "val.csv").to_csv(work / "dermoscopy.csv", index=False)
+    dermoscopy_val = pd.read_csv(ham / "val.csv")
+    if bcn_val is not None:
+        dermoscopy_val = pd.concat([dermoscopy_val[["image_path", "label"]], bcn_val[["image_path", "label"]]], ignore_index=True)
+    dermoscopy_val.to_csv(work / "dermoscopy.csv", index=False)
     pd.read_csv(pad / "val.csv")[["image_path", "label"]].to_csv(work / "phone.csv", index=False)
     weights = out / "dermalens_efficientnet_b0.pt"
     run([py, ml / "train.py", "--train-csv", work / "train_mixed.csv",
@@ -102,11 +121,14 @@ def main():
             "version": args.version,
             "recipe": (
                 f"v2 fine-tuned on PAD-UFES-20 train + HAM10000 replay ({args.epochs} epochs max, "
-                f"{args.ham_replay} replay); decisions: {args.decision}"
+                f"{args.ham_replay} replay"
+                + (" + BCN20000 train lesions" if bcn_train is not None else "")
+                + f"); decisions: {args.decision}"
             ),
             "training_data": {
                 "phone_photos": int(len(pad_train)),
                 "dermoscopy_replay": int(len(replay)),
+                "bcn20000_train": 0 if bcn_train is None else int(len(bcn_train)),
                 "pad_split_summary": json.loads((pad / "split_summary.json").read_text()),
             },
         }
