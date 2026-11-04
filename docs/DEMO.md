@@ -48,6 +48,15 @@ End with:
 
 > Good medical AI should not only make a prediction. It should help us understand when that prediction may be fragile.
 
+## If they ask "how do you know it's better?" (v4 → v5)
+
+This is the strongest answer for a research audience, so keep it ready:
+
+- Before training each new model, the success criteria were written down and committed (`docs/ROADMAP.md`, "pre-registration"), including a separate sensitivity floor for melanoma, basal cell carcinoma and actinic keratosis.
+- Results since then: v4 failed its phone-photo gate; v4.1 passed its gates but was kept off regular photos because it sent only 5 of 13 melanomas for a closer look (v3: 11); v4.2 caught all 13 but flagged 70% of benign phone lesions, so it failed too.
+- What that taught: moving thresholds only slides along one trade-off curve. The next gain has to come from the model, so v5 adds a second hospital's images (BCN20000) to training. The stated cost: BCN20000 is no longer an outside test for v5.
+- v5 is pre-registered but not trained yet. Say so plainly rather than implying a result.
+
 ## Technical depth (for Q&A or a second video)
 
 - EfficientNet-B0 transfer learning; lesion-level train / validation / test split with a leakage check
