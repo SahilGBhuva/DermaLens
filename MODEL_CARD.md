@@ -322,6 +322,26 @@ v4.2 = v4's weights with a threshold **per concerning class and photo type** (a 
 
 **What v4 → v4.2 shows together.** With these weights, moving thresholds only slides along one trade-off curve: v4.1 (pooled, per photo type) gives few false alarms but misses phone melanomas; v4.2 (per class) catches every cancer but flags most benign lesions; v3's top-class rule sits between. No threshold choice met both goals, so the next gain has to come from the model itself (more varied training data, especially phone photos and other hospitals), not from decision rules. **Serving is unchanged by v4.2:** v3 for regular photos; v4.1 for dermoscopy once approved, otherwise v2.
 
+## Saying "I don't know": first look at selective prediction (2026-11-04)
+
+**What this is.** A post-hoc analysis of predictions the models had already made on test data (`ml/selective.py`, results in [`docs/results/selective/`](docs/results/selective/)). It is not pre-registered and scores no test split again. The model answers only the most confident share of images (confidence = top-class probability) and refers the rest to a person. Each cut-off is a quantile of confidence on the same images, so it uses no labels, but a real deployment would have to set the cut-off on validation data first, which has not been done. Intervals resample whole lesions or patients; they are per row, not paired.
+
+| Model, data | Answers 100% | Answers 70% | Answers 50% |
+|---|---|---|---|
+| v2, HAM10000 (1,494 images) | 0.733 (0.67–0.80) | 0.762 (0.67–0.83) | 0.758 (0.66–0.83) |
+| v3, HAM10000 | 0.662 (0.61–0.74) | 0.770 (0.72–0.82) | 0.774 (0.72–0.83) |
+| v2, BCN20000 (16,284 images, other hospital) | 0.486 (0.46–0.51) | 0.543 (0.51–0.57) | 0.558 (0.53–0.58) |
+| v3, phone photos (423 images, PAD-UFES-20) | 0.654 (0.60–0.70) | 0.732 (0.69–0.77) | 0.745 (0.71–0.77) |
+
+*Balanced accuracy of the answered images, with 95% intervals.*
+
+**What it shows.**
+- Referring the least confident images helps, but modestly, and the gain levels off: for v2 on HAM10000 the improvement is not distinguishable from noise, and on the other hospital's images even half-coverage leaves balanced accuracy at 0.56. Abstaining does not rescue a model that is wrong in a confident way, and the other-hospital result says that is common.
+- **Melanomas.** v2 on HAM10000 at 70% coverage: 137 of 187 answered correctly, 20 answered wrongly, 30 referred (at full coverage: 146 correct, 41 wrong). Referral removes about half of the wrong answers but also 9 correct ones. On BCN20000 at 70% coverage v2 still answers 1,157 of 4,003 melanomas wrongly, and refers 1,110.
+- A person reviewing the referred images would need to be part of any real system; the referred share (30–50%) is a large workload.
+
+**Next:** choose the cut-off on validation data, report per-class referral, and test whether an out-of-scope check plus an uncertainty cut-off together beat either alone.
+
 ## Not clinically ready
 
 DermaLens is a research and education project. Before any clinical use it would still need, at minimum: external validation on independent datasets and devices, review by dermatologists, prospective testing, evaluation across skin tones, privacy and security work, and regulatory review. None of these has been done.

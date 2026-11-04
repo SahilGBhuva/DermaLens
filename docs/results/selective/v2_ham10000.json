@@ -1,0 +1,123 @@
+{
+  "source": "v2_ham10000_test_predictions.csv",
+  "model_prefix": null,
+  "images": 1494,
+  "groups": 1121,
+  "confidence": "top-class probability",
+  "curve": [
+    {
+      "coverage": 1.0,
+      "answered": 1494,
+      "confidence_cutoff": null,
+      "accuracy": 0.785140562248996,
+      "accuracy_interval_95": [
+        0.7597,
+        0.8106
+      ],
+      "balanced_accuracy": 0.7331901246884488,
+      "balanced_accuracy_interval_95": [
+        0.6737,
+        0.7972
+      ],
+      "melanomas": 187,
+      "melanomas_answered_correctly": 146,
+      "melanomas_answered_wrongly": 41,
+      "melanomas_referred": 0
+    },
+    {
+      "coverage": 0.9,
+      "answered": 1344,
+      "confidence_cutoff": 0.3691,
+      "accuracy": 0.8169642857142857,
+      "accuracy_interval_95": [
+        0.7912,
+        0.8416
+      ],
+      "balanced_accuracy": 0.7607427034187394,
+      "balanced_accuracy_interval_95": [
+        0.7018,
+        0.8223
+      ],
+      "melanomas": 187,
+      "melanomas_answered_correctly": 142,
+      "melanomas_answered_wrongly": 28,
+      "melanomas_referred": 17
+    },
+    {
+      "coverage": 0.8,
+      "answered": 1195,
+      "confidence_cutoff": 0.4204,
+      "accuracy": 0.8175732217573222,
+      "accuracy_interval_95": [
+        0.7904,
+        0.8427
+      ],
+      "balanced_accuracy": 0.7652803088258128,
+      "balanced_accuracy_interval_95": [
+        0.6689,
+        0.8358
+      ],
+      "melanomas": 187,
+      "melanomas_answered_correctly": 139,
+      "melanomas_answered_wrongly": 22,
+      "melanomas_referred": 26
+    },
+    {
+      "coverage": 0.7,
+      "answered": 1046,
+      "confidence_cutoff": 0.4434,
+      "accuracy": 0.8011472275334608,
+      "accuracy_interval_95": [
+        0.7708,
+        0.8299
+      ],
+      "balanced_accuracy": 0.7624651747043535,
+      "balanced_accuracy_interval_95": [
+        0.6658,
+        0.8317
+      ],
+      "melanomas": 187,
+      "melanomas_answered_correctly": 137,
+      "melanomas_answered_wrongly": 20,
+      "melanomas_referred": 30
+    },
+    {
+      "coverage": 0.6,
+      "answered": 896,
+      "confidence_cutoff": 0.458,
+      "accuracy": 0.7823660714285714,
+      "accuracy_interval_95": [
+        0.7513,
+        0.8152
+      ],
+      "balanced_accuracy": 0.7643067955238367,
+      "balanced_accuracy_interval_95": [
+        0.6686,
+        0.8341
+      ],
+      "melanomas": 187,
+      "melanomas_answered_correctly": 135,
+      "melanomas_answered_wrongly": 19,
+      "melanomas_referred": 33
+    },
+    {
+      "coverage": 0.5,
+      "answered": 747,
+      "confidence_cutoff": 0.4742,
+      "accuracy": 0.749665327978581,
+      "accuracy_interval_95": [
+        0.7129,
+        0.7861
+      ],
+      "balanced_accuracy": 0.7580080606534204,
+      "balanced_accuracy_interval_95": [
+        0.6623,
+        0.8277
+      ],
+      "melanomas": 187,
+      "melanomas_answered_correctly": 134,
+      "melanomas_answered_wrongly": 19,
+      "melanomas_referred": 34
+    }
+  ]
+}

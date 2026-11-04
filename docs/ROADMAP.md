@@ -45,7 +45,7 @@ HAM10000 also publishes lesion segmentation masks (`HAM10000_segmentations_lesio
 
 ### 4. Knowing when to say "I don't know"
 
-- **Selective prediction:** let the model abstain when uncertainty is high. Report coverage against accuracy (for example, "answering 70% of images, balanced accuracy rises to X").
+- **Selective prediction:** let the model abstain when uncertainty is high. Report coverage against accuracy. **First look done 2026-11-04** (`ml/selective.py`, `docs/results/selective/`, `MODEL_CARD.md`): at 70% coverage balanced accuracy rises modestly (v2 on HAM10000 0.733 → 0.762, not distinguishable from noise; v2 on BCN20000 0.486 → 0.543). Still to do: pick the cut-off on validation data and add it to the API and site.
 - **Out-of-scope detection:** flag inputs that aren't dermatoscopic images at all. Today the model always picks one of seven classes.
 
 ### 5. Skin-tone fairness
